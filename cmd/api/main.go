@@ -5,6 +5,7 @@ import (
 
 	"github.com/todorpopov/school-manager/configs"
 	"github.com/todorpopov/school-manager/internal/server"
+	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -24,6 +25,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	db, err := persistence.InitDatabase(env, logger)
+	if err != nil {
+		panic(err)
+	}
+	defer func(env *configs.Config, db *persistence.Database) {
+		err = persistence.CloseDatabase(env, db, logger)
+		if err != nil {
+			panic(err)
+		}
+	}(env, db)
 
 	httpServer := server.NewHttpServer(env, logger)
 	httpServer.RegisterRoutes()
