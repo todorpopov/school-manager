@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/todorpopov/school-manager/configs"
+	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/internal/server/routes"
 	"github.com/todorpopov/school-manager/internal/server/writer"
@@ -53,6 +54,7 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *HttpServer) RegisterRoutes() {
+func (s *HttpServer) RegisterRoutes(usrSvc users.IUserService) {
 	routes.RegisterGeneralRoutes(s.mux, s.writer, s.logger)
+	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, usrSvc)
 }

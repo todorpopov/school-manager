@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal"
 	"go.uber.org/zap"
 )
 
 type AppError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Cause   error  `json:"-"`
+	Code    string      `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+	Cause   error       `json:"-"`
 }
 
 func (e *AppError) Error() string {
@@ -28,7 +30,11 @@ func (e *AppError) Unwrap() error {
 }
 
 func NewAppError(code string, message string, cause error) *AppError {
-	return &AppError{code, message, cause}
+	return &AppError{code, message, nil, cause}
+}
+
+func NewValidationError(message string, data map[string]string) *AppError {
+	return &AppError{"VALIDATION_ERROR", message, data, nil}
 }
 
 type ErrorWriter struct {
@@ -39,14 +45,14 @@ func NewErrorWriter() *ErrorWriter {
 	return &ErrorWriter{}
 }
 
-func (eh *ErrorWriter) sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+func (eh *ErrorWriter) sendErrorResponse(w http.ResponseWriter, statusCode int, message string, data ...interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
 	response := internal.ApiResponse{
 		Error:   true,
 		Message: message,
-		Data:    nil,
+		Data:    data,
 	}
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -67,6 +73,8 @@ func (eh *ErrorWriter) WriteError(w http.ResponseWriter, err error) {
 
 func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 	switch appErr.Code {
+	case "VALIDATION_ERROR":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message, appErr.Data)
 	case "INTEGRITY_CONSTRAINT_VIOLATION":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
 	case "RESTRICT_VIOLATION":
@@ -81,5 +89,40 @@ func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
 	default:
 		eh.sendErrorResponse(w, http.StatusInternalServerError, "An unexpected error occurred")
+	}
+}
+
+func PgErrorToAppError(err error) *AppError {
+	appErr := AppError{Code: "DATABASE_ERROR", Message: "Database Error", Cause: err}
+
+	var pgxErr *pgconn.PgError
+	if !errors.As(err, &pgxErr) {
+		return &appErr
+	}
+
+	switch pgxErr.Code {
+	// Class 23 - Integrity constraint violation
+	case "23000":
+		appErr.Code = "INTEGRITY_CONSTRAINT_VIOLATION"
+		appErr.Message = "Integrity constraint violation"
+		return &appErr
+	case "23001":
+		appErr.Code = "RESTRICT_VIOLATION"
+		appErr.Message = "Foreign key violation"
+		return &appErr
+	case "23002":
+		appErr.Code = "NOT_NULL_VIOLATION"
+		appErr.Message = "Not null violation"
+		return &appErr
+	case "23503":
+		appErr.Code = "FOREIGN_KEY_VIOLATION"
+		appErr.Message = "Foreign key violation"
+		return &appErr
+	case "23505":
+		appErr.Code = "UNIQUE_VIOLATION"
+		appErr.Message = "Unique violation"
+		return &appErr
+	default:
+		return &appErr
 	}
 }

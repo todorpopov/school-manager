@@ -4,30 +4,27 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
-	"github.com/ydb-platform/ydb-go-sdk/v3/config"
 	"go.uber.org/zap"
 )
 
-type UserRepo interface {
+type IUserRepository interface {
 	CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError)
 	GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError)
 	GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exceptions.AppError)
-	UpdateUser(ctx context.Context, tx pgx.Tx, user *User) (*User, *exceptions.AppError)
+	UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError)
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
 
 type UserRepository struct {
 	db     *persistence.Database
-	env    *config.Config
 	logger *zap.Logger
 }
 
-func NewUserRepository(db *persistence.Database, env *config.Config, logger *zap.Logger) *UserRepository {
-	return &UserRepository{db, env, logger}
+func NewUserRepository(db *persistence.Database, logger *zap.Logger) *UserRepository {
+	return &UserRepository{db, logger}
 }
 
 func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
@@ -50,7 +47,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 
 	if err != nil {
 		ur.logger.Error("Failed to create user", zap.Error(err))
-		return nil, domain_model.PgErrorToAppError(err)
+		return nil, exceptions.PgErrorToAppError(err)
 	}
 
 	return &user, nil
@@ -72,7 +69,7 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 
 	if err != nil {
 		ur.logger.Error("Failed to get user by id", zap.Error(err))
-		return nil, domain_model.PgErrorToAppError(err)
+		return nil, exceptions.PgErrorToAppError(err)
 	}
 
 	return &user, nil
@@ -93,7 +90,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 
 	if err != nil {
 		ur.logger.Error("Failed to get users", zap.Error(err))
-		return nil, domain_model.PgErrorToAppError(err)
+		return nil, exceptions.PgErrorToAppError(err)
 	}
 	defer rows.Close()
 
@@ -102,7 +99,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 		err = rows.Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 		if err != nil {
 			ur.logger.Error("Failed to scan user row", zap.Error(err))
-			return nil, domain_model.PgErrorToAppError(err)
+			return nil, exceptions.PgErrorToAppError(err)
 		}
 		users = append(users, user)
 	}
@@ -131,7 +128,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 
 	if err != nil {
 		ur.logger.Error("Failed to update user", zap.Error(err))
-		return nil, domain_model.PgErrorToAppError(err)
+		return nil, exceptions.PgErrorToAppError(err)
 	}
 
 	return &user, nil
@@ -146,7 +143,7 @@ func (ur *UserRepository) UpdateUserPassword(ctx context.Context, tx pgx.Tx, use
 	} else {
 		_, err = ur.db.Pool.Exec(ctx, sql, password, userId)
 	}
-	return domain_model.PgErrorToAppError(err)
+	return exceptions.PgErrorToAppError(err)
 }
 
 func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {
@@ -158,5 +155,5 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 	} else {
 		_, err = ur.db.Pool.Exec(ctx, sql, userId)
 	}
-	return domain_model.PgErrorToAppError(err)
+	return exceptions.PgErrorToAppError(err)
 }
