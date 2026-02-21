@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,8 +48,8 @@ func main() {
 
 	go func() {
 		err = httpServer.Start()
-		if err != nil {
-			panic(err)
+		if err != nil && !errors.Is(http.ErrServerClosed, err) {
+			logger.Error("HTTP server error", zap.Error(err))
 		}
 	}()
 
@@ -55,4 +58,13 @@ func main() {
 	<-sigChan
 
 	logger.Info("Shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err = httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("Failed to shutdown HTTP server", zap.Error(err))
+	} else {
+		logger.Info("HTTP server shut down")
+	}
 }
