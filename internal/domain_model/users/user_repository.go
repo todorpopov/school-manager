@@ -4,18 +4,20 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
 	"github.com/ydb-platform/ydb-go-sdk/v3/config"
 	"go.uber.org/zap"
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, error)
-	GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, error)
-	GetUsers(ctx context.Context, tx pgx.Tx) ([]User, error)
-	UpdateUser(ctx context.Context, tx pgx.Tx, user *User) (*User, error)
-	UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) error
-	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) error
+	CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError)
+	GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError)
+	GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exceptions.AppError)
+	UpdateUser(ctx context.Context, tx pgx.Tx, user *User) (*User, *exceptions.AppError)
+	UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) *exceptions.AppError
+	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
 
 type UserRepository struct {
@@ -28,7 +30,7 @@ func NewUserRepository(db *persistence.Database, env *config.Config, logger *zap
 	return &UserRepository{db, env, logger}
 }
 
-func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, error) {
+func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
 	sql := "INSERT INTO users (first_name, last_name, email, password)" +
 		"VALUES ($1, $2, $3, $4) " +
 		"RETURNING user_id, first_name, last_name, email, password;"
@@ -48,13 +50,13 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 
 	if err != nil {
 		ur.logger.Error("Failed to create user", zap.Error(err))
-		return nil, err
+		return nil, domain_model.PgErrorToAppError(err)
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, error) {
+func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError) {
 	sql := "SELECT user_id, first_name, last_name, email, password FROM users WHERE user_id = $1;"
 
 	var user User
@@ -70,13 +72,13 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 
 	if err != nil {
 		ur.logger.Error("Failed to get user by id", zap.Error(err))
-		return nil, err
+		return nil, domain_model.PgErrorToAppError(err)
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, error) {
+func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exceptions.AppError) {
 	sql := "SELECT user_id, first_name, last_name, email, password FROM users;"
 
 	var users []User
@@ -91,7 +93,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, erro
 
 	if err != nil {
 		ur.logger.Error("Failed to get users", zap.Error(err))
-		return nil, err
+		return nil, domain_model.PgErrorToAppError(err)
 	}
 	defer rows.Close()
 
@@ -100,7 +102,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, erro
 		err = rows.Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 		if err != nil {
 			ur.logger.Error("Failed to scan user row", zap.Error(err))
-			return nil, err
+			return nil, domain_model.PgErrorToAppError(err)
 		}
 		users = append(users, user)
 	}
@@ -108,7 +110,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, erro
 	return users, nil
 }
 
-func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, error) {
+func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError) {
 	sql := "UPDATE users " +
 		" SET first_name = $1, last_name = $2, email = $3 " +
 		"WHERE user_id = $4 " +
@@ -129,30 +131,32 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 
 	if err != nil {
 		ur.logger.Error("Failed to update user", zap.Error(err))
-		return nil, err
+		return nil, domain_model.PgErrorToAppError(err)
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) error {
+func (ur *UserRepository) UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) *exceptions.AppError {
 	sql := "UPDATE users SET password = $1 WHERE user_id = $2;"
 
+	var err error
 	if tx != nil {
-		_, err := tx.Exec(ctx, sql, password, userId)
-		return err
+		_, err = tx.Exec(ctx, sql, password, userId)
+	} else {
+		_, err = ur.db.Pool.Exec(ctx, sql, password, userId)
 	}
-	_, err := ur.db.Pool.Exec(ctx, sql, password, userId)
-	return err
+	return domain_model.PgErrorToAppError(err)
 }
 
-func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) error {
+func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {
 	sql := "DELETE FROM users WHERE user_id = $1;"
 
+	var err error
 	if tx != nil {
-		_, err := tx.Exec(ctx, sql, userId)
-		return err
+		_, err = tx.Exec(ctx, sql, userId)
+	} else {
+		_, err = ur.db.Pool.Exec(ctx, sql, userId)
 	}
-	_, err := ur.db.Pool.Exec(ctx, sql, userId)
-	return err
+	return domain_model.PgErrorToAppError(err)
 }

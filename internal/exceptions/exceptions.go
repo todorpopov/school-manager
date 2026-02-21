@@ -67,7 +67,17 @@ func (eh *ErrorWriter) WriteError(w http.ResponseWriter, err error) {
 
 func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 	switch appErr.Code {
-	case "TEST_ERROR":
+	case "INTEGRITY_CONSTRAINT_VIOLATION":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
+	case "RESTRICT_VIOLATION":
+		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
+	case "NOT_NULL_VIOLATION":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
+	case "FOREIGN_KEY_VIOLATION":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
+	case "UNIQUE_VIOLATION":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
+	case "DATABASE_ERROR":
 		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
 	default:
 		eh.sendErrorResponse(w, http.StatusInternalServerError, "An unexpected error occurred")
