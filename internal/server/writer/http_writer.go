@@ -16,8 +16,8 @@ type HttpWriter struct {
 	errorWriter *exceptions.ErrorWriter
 }
 
-func NewHttpWriter() *HttpWriter {
-	return &HttpWriter{}
+func NewHttpWriter(errWriter *exceptions.ErrorWriter) *HttpWriter {
+	return &HttpWriter{errorWriter: errWriter}
 }
 
 func (writer *HttpWriter) WriteResponse(w http.ResponseWriter, status int, response *internal.ApiResponse) {

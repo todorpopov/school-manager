@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/todorpopov/school-manager/configs"
+	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/internal/server/routes"
 	"github.com/todorpopov/school-manager/internal/server/writer"
 	"go.uber.org/zap"
@@ -25,10 +26,11 @@ type HttpServer struct {
 }
 
 func NewHttpServer(env *configs.Config, logger *zap.Logger) *HttpServer {
+	errWriter := exceptions.NewErrorWriter()
 	return &HttpServer{
 		env,
 		http.NewServeMux(),
-		writer.NewHttpWriter(),
+		writer.NewHttpWriter(errWriter),
 		logger,
 		nil,
 	}
