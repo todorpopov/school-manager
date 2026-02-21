@@ -131,7 +131,7 @@ func InitDatabase(env *configs.Config, logger *zap.Logger) (*Database, error) {
 	return db, nil
 }
 
-func CloseDatabase(env *configs.Config, db *Database, logger *zap.Logger) error {
+func ShutdownDatabase(env *configs.Config, db *Database, logger *zap.Logger) error {
 	db.Close()
 	err := Migrate(env, "down")
 	if err != nil {

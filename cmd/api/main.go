@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/todorpopov/school-manager/configs"
@@ -30,17 +33,26 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer func(env *configs.Config, db *persistence.Database) {
-		err = persistence.CloseDatabase(env, db, logger)
+	defer func() {
+		err = persistence.ShutdownDatabase(env, db, logger)
 		if err != nil {
-			panic(err)
+			logger.Error("Failed to close database", zap.Error(err))
 		}
-	}(env, db)
+	}()
 
 	httpServer := server.NewHttpServer(env, logger)
 	httpServer.RegisterRoutes()
-	err = httpServer.Start()
-	if err != nil {
-		panic(err)
-	}
+
+	go func() {
+		err = httpServer.Start()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	logger.Info("Shutdown signal received")
 }
