@@ -5,6 +5,7 @@ import (
 
 	"github.com/todorpopov/school-manager/configs"
 	"github.com/todorpopov/school-manager/internal/server/routes"
+	"github.com/todorpopov/school-manager/internal/server/writer"
 	"go.uber.org/zap"
 )
 
@@ -16,6 +17,7 @@ type Server interface {
 type HttpServer struct {
 	env    *configs.Config
 	mux    *http.ServeMux
+	writer *writer.HttpWriter
 	logger *zap.Logger
 }
 
@@ -23,6 +25,7 @@ func NewHttpServer(env *configs.Config, logger *zap.Logger) *HttpServer {
 	return &HttpServer{
 		env,
 		http.NewServeMux(),
+		writer.NewHttpWriter(),
 		logger,
 	}
 }
@@ -38,5 +41,5 @@ func (s *HttpServer) Start() error {
 }
 
 func (s *HttpServer) RegisterRoutes() {
-	routes.RegisterGeneralRoutes(s.mux, s.logger)
+	routes.RegisterGeneralRoutes(s.mux, s.writer, s.logger)
 }

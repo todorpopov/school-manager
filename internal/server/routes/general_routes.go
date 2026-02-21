@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"github.com/todorpopov/school-manager/internal/server/handlers"
+	"github.com/todorpopov/school-manager/internal/server/writer"
 	"go.uber.org/zap"
 )
 
-func RegisterGeneralRoutes(s *http.ServeMux, logger *zap.Logger) {
+func RegisterGeneralRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger) {
 	logger.Info("Registering general routes")
-	s.Handle("GET /", handlers.PingHandler())
+	s.Handle("GET /", handlers.PingHandler(writer))
 }
