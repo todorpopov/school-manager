@@ -9,6 +9,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/internal/server/routes"
 	"github.com/todorpopov/school-manager/internal/server/writer"
+	"github.com/todorpopov/school-manager/internal/user_auth"
 	"go.uber.org/zap"
 )
 
@@ -54,7 +55,8 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *HttpServer) RegisterRoutes(usrSvc users.IUserService) {
+func (s *HttpServer) RegisterRoutes(usrSvc users.IUserService, authSvc user_auth.IAuthService) {
 	routes.RegisterGeneralRoutes(s.mux, s.writer, s.logger)
 	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, usrSvc)
+	routes.RegisterAuthRoutes(s.mux, s.writer, s.logger, authSvc)
 }
