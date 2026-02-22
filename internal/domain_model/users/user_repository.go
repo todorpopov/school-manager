@@ -13,6 +13,7 @@ type IUserRepository interface {
 	CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError)
 	GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError)
 	GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exceptions.AppError)
+	GetUserByEmail(ctx context.Context, tx pgx.Tx, email string) (*User, *exceptions.AppError)
 	UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError)
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, userId int32, password string) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
@@ -72,6 +73,26 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	return &user, nil
+}
+
+func (ur *UserRepository) GetUserByEmail(ctx context.Context, tx pgx.Tx, email string) (*User, *exceptions.AppError) {
+	sql := "SELECT user_id, first_name, last_name, email, password FROM users WHERE email = $1;"
+
+	var user User
+	var err error
+	if tx != nil {
+		ur.logger.Debug("Getting user by email transaction", zap.String("email", email))
+		err = tx.QueryRow(ctx, sql, email).Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+	} else {
+		ur.logger.Debug("Getting user by email without transaction", zap.String("email", email))
+		err = ur.db.Pool.QueryRow(ctx, sql, email).Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+	}
+
+	if err != nil {
+		ur.logger.Error("Failed to get user by email", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
 	return &user, nil
 }
 
