@@ -33,10 +33,10 @@ func main() {
 		}
 	}()
 
-	deps := NewAppDeps(db, logger)
+	deps := NewAppDeps(env, db, logger)
 
 	httpServer := server.NewHttpServer(env, logger)
-	httpServer.RegisterRoutes(deps.UserSvc)
+	httpServer.RegisterRoutes(deps.UserSvc, deps.AuthSvc)
 
 	go func() {
 		err = httpServer.Start()

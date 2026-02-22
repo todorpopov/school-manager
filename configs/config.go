@@ -14,6 +14,8 @@ type Config struct {
 	DBMaxConnections        int32
 	DBMaxConnectionLifetime time.Duration
 	DBMaxConnectionIdleTime time.Duration
+
+	SessionExpiration time.Duration
 }
 
 func ParseConfig() *Config {
@@ -24,6 +26,7 @@ func ParseConfig() *Config {
 		DBMaxConnections:        GetEnvInt32("DB_MAX_CONNECTIONS", 10),
 		DBMaxConnectionLifetime: GetEnvDuration("DB_MAX_CONNECTION_LIFETIME", 5*time.Minute),
 		DBMaxConnectionIdleTime: GetEnvDuration("DB_MAX_CONNECTION_IDLE_TIME", 10*time.Minute),
+		SessionExpiration:       GetEnvDuration("SESSION_EXPIRATION", time.Hour),
 	}
 }
 

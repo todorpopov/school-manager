@@ -75,6 +75,10 @@ func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 	switch appErr.Code {
 	case "VALIDATION_ERROR":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message, appErr.Data)
+	case "INVALID_CREDENTIALS":
+		eh.sendErrorResponse(w, http.StatusUnauthorized, appErr.Message)
+	case "USER_NOT_FOUND":
+		eh.sendErrorResponse(w, http.StatusNotFound, appErr.Message)
 	case "INTEGRITY_CONSTRAINT_VIOLATION":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
 	case "RESTRICT_VIOLATION":

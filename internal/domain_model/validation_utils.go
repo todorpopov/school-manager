@@ -46,3 +46,10 @@ func ValidatePassword(password *string, required bool) string {
 	}
 	return ""
 }
+
+func ValidateId(id int32) string {
+	if id <= 0 {
+		return "Invalid id"
+	}
+	return ""
+}

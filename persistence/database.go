@@ -92,7 +92,7 @@ func Migrate(env *configs.Config, direction string) error {
 
 	switch direction {
 	case "down":
-		err = goose.Down(sqlDB, "migrations")
+		err = goose.Reset(sqlDB, "migrations")
 	case "up":
 		err = goose.Up(sqlDB, "migrations")
 	default:
