@@ -66,10 +66,25 @@ func CommitOrRollback(ctx context.Context, tx pgx.Tx, err *error) {
 	}
 }
 
+type MigrationDirection int
+
+const (
+	MigrationUp MigrationDirection = iota
+	MigrationDown
+)
+
+func (md MigrationDirection) IsValid() bool {
+	return md == MigrationUp || md == MigrationDown
+}
+
 //go:embed migrations/*.sql
 var embeddedMigrations embed.FS
 
-func Migrate(env *configs.Config, direction string) error {
+func Migrate(env *configs.Config, direction MigrationDirection) error {
+	if !direction.IsValid() {
+		return fmt.Errorf("invalid migration direction: %v", direction)
+	}
+
 	dsn := env.DBUrl
 	goose.SetBaseFS(embeddedMigrations)
 
@@ -91,12 +106,10 @@ func Migrate(env *configs.Config, direction string) error {
 	}
 
 	switch direction {
-	case "down":
+	case MigrationDown:
 		err = goose.Reset(sqlDB, "migrations")
-	case "up":
+	case MigrationUp:
 		err = goose.Up(sqlDB, "migrations")
-	default:
-		return fmt.Errorf("invalid migration direction (allowed - up/down): %s", direction)
 	}
 
 	if err != nil {
@@ -107,7 +120,7 @@ func Migrate(env *configs.Config, direction string) error {
 }
 
 func InitDatabase(env *configs.Config, logger *zap.Logger) (*Database, error) {
-	err := Migrate(env, "up")
+	err := Migrate(env, MigrationUp)
 	if err != nil {
 		logger.Error("Failed to apply database migrations", zap.Error(err))
 		return nil, err
@@ -133,7 +146,7 @@ func InitDatabase(env *configs.Config, logger *zap.Logger) (*Database, error) {
 
 func ShutdownDatabase(env *configs.Config, db *Database, logger *zap.Logger) error {
 	db.Close()
-	err := Migrate(env, "down")
+	err := Migrate(env, MigrationDown)
 	if err != nil {
 		logger.Error("Failed to rollback database migrations", zap.Error(err))
 		return err
