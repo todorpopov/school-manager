@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal"
 	"go.uber.org/zap"
@@ -35,6 +36,10 @@ func NewAppError(code string, message string, cause error) *AppError {
 
 func NewValidationError(message string, data map[string]string) *AppError {
 	return &AppError{"VALIDATION_ERROR", message, data, nil}
+}
+
+func NewRequestValidationError(message string) *AppError {
+	return &AppError{"REQUEST_VALIDATION_ERROR", message, nil, nil}
 }
 
 type ErrorWriter struct {
@@ -77,9 +82,11 @@ func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
 	case "VALIDATION_ERROR":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message, appErr.Data)
+	case "REQUEST_VALIDATION_ERROR":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
 	case "INVALID_CREDENTIALS":
 		eh.sendErrorResponse(w, http.StatusUnauthorized, appErr.Message)
-	case "USER_NOT_FOUND":
+	case "NOT_FOUND":
 		eh.sendErrorResponse(w, http.StatusNotFound, appErr.Message)
 	case "INTEGRITY_CONSTRAINT_VIOLATION":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
@@ -100,6 +107,12 @@ func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 
 func PgErrorToAppError(err error) *AppError {
 	appErr := AppError{Code: "DATABASE_ERROR", Message: "Database Error", Cause: err}
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		appErr.Code = "NOT_FOUND"
+		appErr.Message = "Not found"
+		return &appErr
+	}
 
 	var pgxErr *pgconn.PgError
 	if !errors.As(err, &pgxErr) {

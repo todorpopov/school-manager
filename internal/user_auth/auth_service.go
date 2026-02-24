@@ -106,9 +106,9 @@ func (as *AuthService) LogUserIn(ctx context.Context, loginRequest *LoginRequest
 		return nil, err
 	}
 
-	user, err := as.userSvc.GetUserByEmail(ctx, nil, loginRequest.Email)
+	user, err := as.userSvc.GetUserByEmailWithPass(ctx, nil, loginRequest.Email)
 	if err != nil {
-		return nil, exceptions.NewAppError("USER_NOT_FOUND", "No user found with the provided email", err)
+		return nil, err
 	}
 
 	if match := as.bcryptSvc.PasswordsMatch(*user.Password, loginRequest.Password); !match {

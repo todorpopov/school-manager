@@ -5,7 +5,7 @@ import (
 )
 
 type IBCryptService interface {
-	HashPassword(password string) (string, error)
+	HashPassword(password string) (string, bool)
 	PasswordsMatch(hash, password string) bool
 }
 
@@ -15,9 +15,12 @@ func NewBCryptService() *BCryptService {
 	return &BCryptService{}
 }
 
-func (bs *BCryptService) HashPassword(password string) (string, error) {
+func (bs *BCryptService) HashPassword(password string) (string, bool) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 6)
-	return string(bytes), err
+	if err != nil {
+		return "", false
+	}
+	return string(bytes), true
 }
 
 func (bs *BCryptService) PasswordsMatch(hash, password string) bool {

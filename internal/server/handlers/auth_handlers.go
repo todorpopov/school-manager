@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/todorpopov/school-manager/internal"
-	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/internal/server/writer"
 	"github.com/todorpopov/school-manager/internal/user_auth"
 	"go.uber.org/zap"
@@ -14,7 +13,7 @@ func RegisterUserHandler(hw *writer.HttpWriter, authSvc user_auth.IAuthService, 
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, decodeErr := decodeRequestBodyInto[user_auth.RegisterRequest](r, logger)
 		if decodeErr != nil {
-			hw.WriteError(w, exceptions.NewAppError("INTERNAL_ERROR", decodeErr.Error(), decodeErr))
+			hw.WriteError(w, decodeErr)
 			return
 		}
 
@@ -27,7 +26,6 @@ func RegisterUserHandler(hw *writer.HttpWriter, authSvc user_auth.IAuthService, 
 
 		resp := internal.NewApiResponse(false, "User registered successfully", authResp)
 		hw.WriteResponse(w, http.StatusCreated, resp)
-		return
 	}
 }
 
@@ -35,7 +33,7 @@ func LogUserInHandler(hw *writer.HttpWriter, authSvc user_auth.IAuthService, log
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, decodeErr := decodeRequestBodyInto[user_auth.LoginRequest](r, logger)
 		if decodeErr != nil {
-			hw.WriteError(w, exceptions.NewAppError("INTERNAL_ERROR", decodeErr.Error(), decodeErr))
+			hw.WriteError(w, decodeErr)
 			return
 		}
 
@@ -48,6 +46,5 @@ func LogUserInHandler(hw *writer.HttpWriter, authSvc user_auth.IAuthService, log
 
 		resp := internal.NewApiResponse(false, "User logged in successfully", authResp)
 		hw.WriteResponse(w, http.StatusOK, resp)
-		return
 	}
 }

@@ -160,11 +160,16 @@ func (ur *UserRepository) UpdateUserPassword(ctx context.Context, tx pgx.Tx, use
 
 	var err error
 	if tx != nil {
+		ur.logger.Debug("Updating user password in transaction")
 		_, err = tx.Exec(ctx, sql, password, userId)
 	} else {
+		ur.logger.Debug("Updating user password without transaction")
 		_, err = ur.db.Pool.Exec(ctx, sql, password, userId)
 	}
-	return exceptions.PgErrorToAppError(err)
+	if err != nil {
+		return exceptions.PgErrorToAppError(err)
+	}
+	return nil
 }
 
 func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {
@@ -172,9 +177,14 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 
 	var err error
 	if tx != nil {
+		ur.logger.Debug("Deleting user in transaction")
 		_, err = tx.Exec(ctx, sql, userId)
 	} else {
+		ur.logger.Debug("Deleting user without transaction")
 		_, err = ur.db.Pool.Exec(ctx, sql, userId)
 	}
-	return exceptions.PgErrorToAppError(err)
+	if err != nil {
+		return exceptions.PgErrorToAppError(err)
+	}
+	return nil
 }

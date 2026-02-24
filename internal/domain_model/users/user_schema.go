@@ -21,3 +21,18 @@ type UpdateUser struct {
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 }
+
+type UpdateUserRequest struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
+type UpdateUserPassword struct {
+	UserId   int32  `json:"user_id"`
+	Password string `json:"password"`
+}
+
+type UpdateUserPasswordRequest struct {
+	Password string `json:"password"`
+}
