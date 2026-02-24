@@ -73,6 +73,8 @@ func (eh *ErrorWriter) WriteError(w http.ResponseWriter, err error) {
 
 func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 	switch appErr.Code {
+	case "INTERNAL_ERROR":
+		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
 	case "VALIDATION_ERROR":
 		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message, appErr.Data)
 	case "INVALID_CREDENTIALS":

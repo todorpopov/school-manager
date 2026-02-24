@@ -11,5 +11,6 @@ import (
 
 func RegisterAuthRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger, authSvc user_auth.IAuthService) {
 	logger.Info("Registering auth routes")
-	s.Handle("POST /api/auth/login", handlers.LogUserIn(writer, authSvc, logger))
+	s.Handle("POST /api/auth/register", handlers.RegisterUserHandler(writer, authSvc, logger))
+	s.Handle("POST /api/auth/login", handlers.LogUserInHandler(writer, authSvc, logger))
 }
