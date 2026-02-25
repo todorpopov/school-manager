@@ -5,11 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	domain_model2 "github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/tests"
 )
-
-func strPtr(s string) *string {
-	return &s
-}
 
 func TestValidateString(t *testing.T) {
 	tests := []struct {
@@ -22,7 +19,7 @@ func TestValidateString(t *testing.T) {
 	}{
 		{
 			name:     "valid string within range",
-			input:    strPtr("hello"),
+			input:    tests.StrPtr("hello"),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -30,7 +27,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "valid string at minimum length",
-			input:    strPtr("abc"),
+			input:    tests.StrPtr("abc"),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -38,7 +35,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "valid string at maximum length",
-			input:    strPtr("abcdefghij"),
+			input:    tests.StrPtr("abcdefghij"),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -46,7 +43,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "empty string when required",
-			input:    strPtr(""),
+			input:    tests.StrPtr(""),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -62,7 +59,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "empty string when not required",
-			input:    strPtr(""),
+			input:    tests.StrPtr(""),
 			minLen:   3,
 			maxLen:   10,
 			required: false,
@@ -78,7 +75,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "string too short",
-			input:    strPtr("ab"),
+			input:    tests.StrPtr("ab"),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -86,7 +83,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "string too long",
-			input:    strPtr("abcdefghijk"),
+			input:    tests.StrPtr("abcdefghijk"),
 			minLen:   3,
 			maxLen:   10,
 			required: true,
@@ -94,7 +91,7 @@ func TestValidateString(t *testing.T) {
 		},
 		{
 			name:     "single character with min 1",
-			input:    strPtr("a"),
+			input:    tests.StrPtr("a"),
 			minLen:   1,
 			maxLen:   5,
 			required: true,
@@ -119,55 +116,55 @@ func TestValidateEmail(t *testing.T) {
 	}{
 		{
 			name:     "valid email - simple",
-			email:    strPtr("test@example.com"),
+			email:    tests.StrPtr("test@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - with dots",
-			email:    strPtr("user.name@example.com"),
+			email:    tests.StrPtr("user.name@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - with hyphens",
-			email:    strPtr("user-name@example-domain.com"),
+			email:    tests.StrPtr("user-name@example-domain.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - with underscore",
-			email:    strPtr("user_name@example.com"),
+			email:    tests.StrPtr("user_name@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - with numbers",
-			email:    strPtr("user123@example123.com"),
+			email:    tests.StrPtr("user123@example123.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - subdomain",
-			email:    strPtr("user@mail.example.com"),
+			email:    tests.StrPtr("user@mail.example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - multiple subdomains",
-			email:    strPtr("user@mail.sub.example.com"),
+			email:    tests.StrPtr("user@mail.sub.example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid email - two letter TLD",
-			email:    strPtr("user@example.io"),
+			email:    tests.StrPtr("user@example.io"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "empty email when required",
-			email:    strPtr(""),
+			email:    tests.StrPtr(""),
 			required: true,
 			want:     "Email cannot be empty",
 		},
@@ -179,7 +176,7 @@ func TestValidateEmail(t *testing.T) {
 		},
 		{
 			name:     "empty email when not required",
-			email:    strPtr(""),
+			email:    tests.StrPtr(""),
 			required: false,
 			want:     "",
 		},
@@ -191,67 +188,67 @@ func TestValidateEmail(t *testing.T) {
 		},
 		{
 			name:     "invalid email - no @ symbol",
-			email:    strPtr("userexample.com"),
+			email:    tests.StrPtr("userexample.com"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - no domain",
-			email:    strPtr("user@"),
+			email:    tests.StrPtr("user@"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - no local part",
-			email:    strPtr("@example.com"),
+			email:    tests.StrPtr("@example.com"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - no TLD",
-			email:    strPtr("user@example"),
+			email:    tests.StrPtr("user@example"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - multiple @ symbols",
-			email:    strPtr("user@@example.com"),
+			email:    tests.StrPtr("user@@example.com"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - spaces",
-			email:    strPtr("user name@example.com"),
+			email:    tests.StrPtr("user name@example.com"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "invalid email - special characters",
-			email:    strPtr("user#name@example.com"),
+			email:    tests.StrPtr("user#name@example.com"),
 			required: true,
 			want:     "Invalid email format",
 		},
 		{
 			name:     "email starts with dot - currently passes regex",
-			email:    strPtr(".user@example.com"),
+			email:    tests.StrPtr(".user@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "email ends with dot - currently passes regex",
-			email:    strPtr("user.@example.com"),
+			email:    tests.StrPtr("user.@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "email with consecutive dots - currently passes regex",
-			email:    strPtr("user..name@example.com"),
+			email:    tests.StrPtr("user..name@example.com"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "invalid email - single letter TLD",
-			email:    strPtr("user@example.c"),
+			email:    tests.StrPtr("user@example.c"),
 			required: true,
 			want:     "Invalid email format",
 		},
@@ -274,31 +271,31 @@ func TestValidatePassword(t *testing.T) {
 	}{
 		{
 			name:     "valid password - 8 characters",
-			password: strPtr("password"),
+			password: tests.StrPtr("password"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid password - 32 characters",
-			password: strPtr("12345678901234567890123456789012"),
+			password: tests.StrPtr("12345678901234567890123456789012"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid password - middle range",
-			password: strPtr("mySecurePassword123"),
+			password: tests.StrPtr("mySecurePassword123"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "valid password - with special characters",
-			password: strPtr("P@ssw0rd!"),
+			password: tests.StrPtr("P@ssw0rd!"),
 			required: true,
 			want:     "",
 		},
 		{
 			name:     "empty password when required",
-			password: strPtr(""),
+			password: tests.StrPtr(""),
 			required: true,
 			want:     "Password cannot be empty",
 		},
@@ -310,7 +307,7 @@ func TestValidatePassword(t *testing.T) {
 		},
 		{
 			name:     "empty password when not required",
-			password: strPtr(""),
+			password: tests.StrPtr(""),
 			required: false,
 			want:     "",
 		},
@@ -322,25 +319,25 @@ func TestValidatePassword(t *testing.T) {
 		},
 		{
 			name:     "password too short - 7 characters",
-			password: strPtr("passwor"),
+			password: tests.StrPtr("passwor"),
 			required: true,
 			want:     "Password length must be between 8 and 32",
 		},
 		{
 			name:     "password too short - 1 character",
-			password: strPtr("p"),
+			password: tests.StrPtr("p"),
 			required: true,
 			want:     "Password length must be between 8 and 32",
 		},
 		{
 			name:     "password too long - 33 characters",
-			password: strPtr("123456789012345678901234567890123"),
+			password: tests.StrPtr("123456789012345678901234567890123"),
 			required: true,
 			want:     "Password length must be between 8 and 32",
 		},
 		{
 			name:     "password too long - 50 characters",
-			password: strPtr("12345678901234567890123456789012345678901234567890"),
+			password: tests.StrPtr("12345678901234567890123456789012345678901234567890"),
 			required: true,
 			want:     "Password length must be between 8 and 32",
 		},

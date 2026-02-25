@@ -30,6 +30,18 @@ func ParseConfig() *Config {
 	}
 }
 
+func NewTestConfig(dbUrl string) *Config {
+	return &Config{
+		ApiPort:                 "8080",
+		DBUrl:                   dbUrl,
+		DBMinConnections:        5,
+		DBMaxConnections:        10,
+		DBMaxConnectionLifetime: 5 * time.Minute,
+		DBMaxConnectionIdleTime: 10 * time.Minute,
+		SessionExpiration:       time.Hour,
+	}
+}
+
 func GetEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
