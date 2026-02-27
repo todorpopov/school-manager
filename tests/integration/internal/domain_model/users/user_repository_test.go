@@ -353,6 +353,200 @@ func (suite *UserRepositorySuite) TestGetUserByEmail() {
 	}
 }
 
+func (suite *UserRepositorySuite) TestUpdateUser() {
+	testCases := []struct {
+		name                    string
+		initialUser             *users.CreateUser
+		updateUser              *users.UpdateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentUserId    bool
+		useDuplicateEmail       bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully update user without transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Charlie",
+				LastName:  "Brown",
+				Email:     "charlie.brown@example.com",
+				Password:  "hashedPassword555",
+			},
+			updateUser: &users.UpdateUser{
+				FirstName: "Charles",
+				LastName:  "Brownson",
+				Email:     "charles.brownson@example.com",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			useDuplicateEmail:       false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully update user with transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Diana",
+				LastName:  "Prince",
+				Email:     "diana.prince@example.com",
+				Password:  "hashedPassword666",
+			},
+			updateUser: &users.UpdateUser{
+				FirstName: "Wonder",
+				LastName:  "Woman",
+				Email:     "wonder.woman@example.com",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			useDuplicateEmail:       false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to update user without transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "Ghost",
+				LastName:  "User",
+				Email:     "ghost.user@example.com",
+				Password:  "hashedPassword777",
+			},
+			updateUser: &users.UpdateUser{
+				UserId:    99999,
+				FirstName: "Updated",
+				LastName:  "Ghost",
+				Email:     "updated.ghost@example.com",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			useDuplicateEmail:       false,
+			expectError:             true,
+		},
+		{
+			name: "Fail to update user with transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "Phantom",
+				LastName:  "User",
+				Email:     "phantom.user@example.com",
+				Password:  "hashedPassword888",
+			},
+			updateUser: &users.UpdateUser{
+				UserId:    99999,
+				FirstName: "Updated",
+				LastName:  "Phantom",
+				Email:     "updated.phantom@example.com",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			useDuplicateEmail:       false,
+			expectError:             true,
+		},
+		{
+			name: "Fail to update user without transaction - duplicate email",
+			initialUser: &users.CreateUser{
+				FirstName: "First",
+				LastName:  "User",
+				Email:     "first.user@example.com",
+				Password:  "hashedPassword999",
+			},
+			updateUser: &users.UpdateUser{
+				FirstName: "First",
+				LastName:  "User",
+				Email:     "duplicate.target@example.com",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			useDuplicateEmail:       true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to update user with transaction - duplicate email",
+			initialUser: &users.CreateUser{
+				FirstName: "Second",
+				LastName:  "User",
+				Email:     "second.user@example.com",
+				Password:  "hashedPassword000",
+			},
+			updateUser: &users.UpdateUser{
+				FirstName: "Second",
+				LastName:  "User",
+				Email:     "duplicate.target2@example.com",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			useDuplicateEmail:       true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var createdUser *users.User
+			var duplicateUser *users.User
+
+			if tc.shouldCreateInitialUser {
+				createdUser, err = suite.usersRepo.CreateUser(suite.Ctx, nil, tc.initialUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(createdUser, "Expected initial user to not be nil")
+				tc.updateUser.UserId = createdUser.UserId
+			}
+
+			if tc.useDuplicateEmail {
+				duplicateUser, err = suite.usersRepo.CreateUser(suite.Ctx, nil, &users.CreateUser{
+					FirstName: "Duplicate",
+					LastName:  "Target",
+					Email:     tc.updateUser.Email,
+					Password:  "hashedPasswordDuplicate",
+				})
+				suite.Require().Nil(err, "Expected no error when creating duplicate target user")
+				suite.Require().NotNil(duplicateUser, "Expected duplicate target user to not be nil")
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			updatedUser, updateErr := suite.usersRepo.UpdateUser(suite.Ctx, tx, tc.updateUser)
+
+			if tc.expectError {
+				suite.Require().NotNil(updateErr, "Expected an error but got none")
+				suite.Require().Nil(updatedUser, "Expected updated user to be nil when error occurs")
+			} else {
+				suite.Require().Nil(updateErr, "Expected no error but got: %v", updateErr)
+				suite.Require().NotNil(updatedUser, "Expected updated user to be returned")
+				suite.Require().Equal(tc.updateUser.UserId, updatedUser.UserId)
+				suite.Require().Equal(tc.updateUser.FirstName, updatedUser.FirstName)
+				suite.Require().Equal(tc.updateUser.LastName, updatedUser.LastName)
+				suite.Require().Equal(tc.updateUser.Email, updatedUser.Email)
+				suite.Require().NotNil(updatedUser.Password, "Expected password to be returned")
+				suite.Require().Equal(createdUser.Password, updatedUser.Password, "Password should not change during update")
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+
+				retrievedUser, getErr := suite.usersRepo.GetUserById(suite.Ctx, nil, updatedUser.UserId)
+				suite.Require().Nil(getErr, "Expected no error when retrieving updated user")
+				suite.Require().Equal(updatedUser.UserId, retrievedUser.UserId)
+				suite.Require().Equal(tc.updateUser.FirstName, retrievedUser.FirstName)
+				suite.Require().Equal(tc.updateUser.LastName, retrievedUser.LastName)
+				suite.Require().Equal(tc.updateUser.Email, retrievedUser.Email)
+				suite.Require().Equal(updatedUser.Password, retrievedUser.Password)
+			}
+		})
+	}
+}
+
 func TestUserRepositorySuite(t *testing.T) {
 	suite.Run(t, new(UserRepositorySuite))
 }
