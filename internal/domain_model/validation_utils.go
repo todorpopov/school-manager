@@ -41,8 +41,8 @@ func ValidatePassword(password *string, required bool) string {
 		}
 		return ""
 	}
-	if len(*password) < 8 || len(*password) > 32 {
-		return "Password length must be between 8 and 32"
+	if len(*password) < 8 || len(*password) > 60 {
+		return "Password length must be between 8 and 60"
 	}
 	return ""
 }

@@ -115,11 +115,9 @@ func TestValidateCreateUser(t *testing.T) {
 				return
 			}
 
-			if assert.NotNil(t, err) {
-				assert.Equal(t, "VALIDATION_ERROR", err.Code)
-				assert.Equal(t, "Validation failed during user creation", err.Message)
-				assert.Equal(t, tt.expectData, err.Data)
-			}
+			assert.Equal(t, "VALIDATION_ERROR", err.Code)
+			assert.Equal(t, "Validation failed during user creation", err.Message)
+			assert.Equal(t, tt.expectData, err.Data)
 		})
 	}
 }

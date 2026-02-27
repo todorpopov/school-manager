@@ -25,14 +25,20 @@ type UserService struct {
 	usrRepo   IUserRepository
 }
 
+func nullPassword(usr *User) {
+	if usr != nil {
+		usr.Password = nil
+	}
+}
+
 func NewUserService(bcryptSvc internal.IBCryptService, usrRepo IUserRepository) *UserService {
 	return &UserService{bcryptSvc, usrRepo}
 }
 
 func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
-	err := ValidateCreateUser(createUser)
-	if err != nil {
-		return nil, err
+	validationErr := ValidateCreateUser(createUser)
+	if validationErr != nil {
+		return nil, validationErr
 	}
 
 	hash, success := us.bcryptSvc.HashPassword(createUser.Password)
@@ -40,11 +46,10 @@ func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *Cr
 		return nil, exceptions.NewAppError("INTERNAL_ERROR", "Failed to hash password", nil)
 	}
 
-	createUser.Password = hash
-	usr, err := us.usrRepo.CreateUser(ctx, tx, createUser)
-	if usr != nil {
-		usr.Password = nil
-	}
+	createUserCpy := *createUser
+	createUserCpy.Password = hash
+	usr, err := us.usrRepo.CreateUser(ctx, tx, &createUserCpy)
+	nullPassword(usr)
 	return usr, err
 }
 
@@ -53,9 +58,7 @@ func (us *UserService) GetUserById(ctx context.Context, tx pgx.Tx, userId int32)
 		return nil, exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 	usr, err := us.usrRepo.GetUserById(ctx, tx, userId)
-	if usr != nil {
-		usr.Password = nil
-	}
+	nullPassword(usr)
 	return usr, err
 }
 
@@ -64,9 +67,7 @@ func (us *UserService) GetUserByEmail(ctx context.Context, tx pgx.Tx, email stri
 		return nil, exceptions.NewValidationError("Invalid email", map[string]string{"email": msg})
 	}
 	usr, err := us.usrRepo.GetUserByEmail(ctx, tx, email)
-	if usr != nil {
-		usr.Password = nil
-	}
+	nullPassword(usr)
 	return usr, err
 }
 
@@ -86,19 +87,17 @@ func (us *UserService) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *except
 }
 
 func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError) {
-	if err := ValidateUpdateUser(updateUser); err != nil {
-		return nil, err
+	if validationErr := ValidateUpdateUser(updateUser); validationErr != nil {
+		return nil, validationErr
 	}
 	usr, err := us.usrRepo.UpdateUser(ctx, tx, updateUser)
-	if usr != nil {
-		usr.Password = nil
-	}
+	nullPassword(usr)
 	return usr, err
 }
 
 func (us *UserService) UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError {
-	if err := ValidateUpdateUserPassword(updateUserPass); err != nil {
-		return err
+	if validationErr := ValidateUpdateUserPassword(updateUserPass); validationErr != nil {
+		return validationErr
 	}
 	hash, success := us.bcryptSvc.HashPassword(updateUserPass.Password)
 	if success != true {
