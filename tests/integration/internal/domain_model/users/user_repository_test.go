@@ -669,6 +669,113 @@ func (suite *UserRepositorySuite) TestUpdateUserPassword() {
 	}
 }
 
+func (suite *UserRepositorySuite) TestDeleteUser() {
+	testCases := []struct {
+		name                    string
+		initialUser             *users.CreateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentUserId    bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully delete user without transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Delete",
+				LastName:  "Test",
+				Email:     "delete.test@example.com",
+				Password:  "hashedPasswordDelete123",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully delete user with transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Delete",
+				LastName:  "TestTwo",
+				Email:     "delete.test2@example.com",
+				Password:  "hashedPasswordDelete456",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to delete user without transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "Delete",
+				Email:     "nonexistent.delete@example.com",
+				Password:  "somePassword",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to delete user with transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "DeleteTwo",
+				Email:     "nonexistent.delete2@example.com",
+				Password:  "somePassword2",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var createdUser *users.User
+			var userIdToDelete int32
+
+			if tc.shouldCreateInitialUser {
+				createdUser, err = suite.usersRepo.CreateUser(suite.Ctx, nil, tc.initialUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(createdUser, "Expected initial user to not be nil")
+				userIdToDelete = createdUser.UserId
+			} else if tc.useNonExistentUserId {
+				userIdToDelete = 99999
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			deleteErr := suite.usersRepo.DeleteUser(suite.Ctx, tx, userIdToDelete)
+
+			if tc.expectError {
+				suite.Require().NotNil(deleteErr, "Expected an error but got none")
+			} else {
+				suite.Require().Nil(deleteErr, "Expected no error but got: %v", deleteErr)
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+
+				retrievedUser, getErr := suite.usersRepo.GetUserById(suite.Ctx, nil, userIdToDelete)
+				suite.Require().NotNil(getErr, "Expected an error when retrieving deleted user")
+				suite.Require().Nil(retrievedUser, "Expected user to be nil after deletion")
+			}
+		})
+	}
+}
+
 func TestUserRepositorySuite(t *testing.T) {
 	suite.Run(t, new(UserRepositorySuite))
 }
