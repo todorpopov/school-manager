@@ -631,6 +631,11 @@ func (suite *UserRepositorySuite) TestUpdateUserPassword() {
 				userIdToUpdate = 99999
 			}
 
+			updateUserPass := &users.UpdateUserPassword{
+				UserId:   userIdToUpdate,
+				Password: tc.newPassword,
+			}
+
 			if tc.useTransaction {
 				tx, err = suite.Db.Pool.Begin(suite.Ctx)
 				suite.Require().NoError(err)
@@ -639,7 +644,7 @@ func (suite *UserRepositorySuite) TestUpdateUserPassword() {
 				}()
 			}
 
-			updateErr := suite.usersRepo.UpdateUserPassword(suite.Ctx, tx, userIdToUpdate, tc.newPassword)
+			updateErr := suite.usersRepo.UpdateUserPassword(suite.Ctx, tx, updateUserPass)
 
 			if tc.expectError {
 				suite.Require().NotNil(updateErr, "Expected an error but got none")

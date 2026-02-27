@@ -10,15 +10,11 @@ import (
 )
 
 type IUserService interface {
-	validateCreateUser(createUser *CreateUser) *exceptions.AppError
-	validateUpdateUser(updateUser *UpdateUser) *exceptions.AppError
-	validateUpdateUserPassword(updateUserPass *UpdateUserPassword) *exceptions.AppError
-
 	CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError)
 	GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError)
 	GetUserByEmail(ctx context.Context, tx pgx.Tx, email string) (*User, *exceptions.AppError)
 	GetUserByEmailWithPass(ctx context.Context, tx pgx.Tx, email string) (*User, *exceptions.AppError)
-	GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exceptions.AppError)
+	GetUsers(ctx context.Context, tx pgx.Tx) (*[]User, *exceptions.AppError)
 	UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError)
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
@@ -33,88 +29,8 @@ func NewUserService(bcryptSvc internal.IBCryptService, usrRepo IUserRepository) 
 	return &UserService{bcryptSvc, usrRepo}
 }
 
-func (us *UserService) validateCreateUser(createUser *CreateUser) *exceptions.AppError {
-	messages := map[string]string{}
-	var msg string
-
-	msg = domain_model.ValidateString(&createUser.FirstName, 1, 255, true)
-	if msg != "" {
-		messages["first_name"] = msg
-	}
-
-	msg = domain_model.ValidateString(&createUser.LastName, 1, 255, true)
-	if msg != "" {
-		messages["last_name"] = msg
-	}
-
-	msg = domain_model.ValidateEmail(&createUser.Email, true)
-	if msg != "" {
-		messages["email"] = msg
-	}
-
-	msg = domain_model.ValidatePassword(&createUser.Password, true)
-	if msg != "" {
-		messages["password"] = msg
-	}
-
-	if len(messages) > 0 {
-		return exceptions.NewValidationError("Validation failed during user creation", messages)
-	}
-	return nil
-}
-
-func (us *UserService) validateUpdateUser(updateUser *UpdateUser) *exceptions.AppError {
-	messages := map[string]string{}
-	var msg string
-
-	msg = domain_model.ValidateId(updateUser.UserId)
-	if msg != "" {
-		messages["user_id"] = msg
-	}
-
-	msg = domain_model.ValidateString(&updateUser.FirstName, 1, 255, true)
-	if msg != "" {
-		messages["first_name"] = msg
-	}
-
-	msg = domain_model.ValidateString(&updateUser.LastName, 1, 255, true)
-	if msg != "" {
-		messages["last_name"] = msg
-	}
-
-	msg = domain_model.ValidateEmail(&updateUser.Email, true)
-	if msg != "" {
-		messages["email"] = msg
-	}
-
-	if len(messages) > 0 {
-		return exceptions.NewValidationError("Validation failed during user update", messages)
-	}
-	return nil
-}
-
-func (us *UserService) validateUpdateUserPassword(updateUserPass *UpdateUserPassword) *exceptions.AppError {
-	messages := map[string]string{}
-	var msg string
-
-	msg = domain_model.ValidateId(updateUserPass.UserId)
-	if msg != "" {
-		messages["user_id"] = msg
-	}
-
-	msg = domain_model.ValidatePassword(&updateUserPass.Password, true)
-	if msg != "" {
-		messages["password"] = msg
-	}
-
-	if len(messages) > 0 {
-		return exceptions.NewValidationError("Validation failed during user password update", messages)
-	}
-	return nil
-}
-
 func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
-	err := us.validateCreateUser(createUser)
+	err := ValidateCreateUser(createUser)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +86,7 @@ func (us *UserService) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *except
 }
 
 func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError) {
-	if err := us.validateUpdateUser(updateUser); err != nil {
+	if err := ValidateUpdateUser(updateUser); err != nil {
 		return nil, err
 	}
 	usr, err := us.usrRepo.UpdateUser(ctx, tx, updateUser)
@@ -181,7 +97,7 @@ func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *Up
 }
 
 func (us *UserService) UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError {
-	if err := us.validateUpdateUserPassword(updateUserPass); err != nil {
+	if err := ValidateUpdateUserPassword(updateUserPass); err != nil {
 		return err
 	}
 	hash, success := us.bcryptSvc.HashPassword(updateUserPass.Password)
@@ -190,7 +106,7 @@ func (us *UserService) UpdateUserPassword(ctx context.Context, tx pgx.Tx, update
 	}
 
 	updateUserPass.Password = hash
-	return us.usrRepo.UpdateUserPassword(ctx, tx, updateUserPass.UserId, updateUserPass.Password)
+	return us.usrRepo.UpdateUserPassword(ctx, tx, updateUserPass)
 }
 
 func (us *UserService) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {
