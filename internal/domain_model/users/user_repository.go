@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
@@ -159,16 +160,24 @@ func (ur *UserRepository) UpdateUserPassword(ctx context.Context, tx pgx.Tx, use
 	sql := "UPDATE users SET password = $1 WHERE user_id = $2;"
 
 	var err error
+	var cmdTag pgconn.CommandTag
 	if tx != nil {
 		ur.logger.Debug("Updating user password in transaction")
-		_, err = tx.Exec(ctx, sql, password, userId)
+		cmdTag, err = tx.Exec(ctx, sql, password, userId)
 	} else {
 		ur.logger.Debug("Updating user password without transaction")
-		_, err = ur.db.Pool.Exec(ctx, sql, password, userId)
+		cmdTag, err = ur.db.Pool.Exec(ctx, sql, password, userId)
 	}
 	if err != nil {
+		ur.logger.Error("Failed to update user password", zap.Error(err))
 		return exceptions.PgErrorToAppError(err)
 	}
+
+	if cmdTag.RowsAffected() == 0 {
+		ur.logger.Error("Failed to update user password - user not found", zap.Int32("user_id", userId))
+		return exceptions.NewNotFoundError("User not found")
+	}
+
 	return nil
 }
 
@@ -176,15 +185,23 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 	sql := "DELETE FROM users WHERE user_id = $1;"
 
 	var err error
+	var cmdTag pgconn.CommandTag
 	if tx != nil {
 		ur.logger.Debug("Deleting user in transaction")
-		_, err = tx.Exec(ctx, sql, userId)
+		cmdTag, err = tx.Exec(ctx, sql, userId)
 	} else {
 		ur.logger.Debug("Deleting user without transaction")
-		_, err = ur.db.Pool.Exec(ctx, sql, userId)
+		cmdTag, err = ur.db.Pool.Exec(ctx, sql, userId)
 	}
 	if err != nil {
+		ur.logger.Error("Failed to delete user", zap.Error(err))
 		return exceptions.PgErrorToAppError(err)
 	}
+
+	if cmdTag.RowsAffected() == 0 {
+		ur.logger.Error("Failed to delete user - user not found", zap.Int32("user_id", userId))
+		return exceptions.NewNotFoundError("User not found")
+	}
+
 	return nil
 }

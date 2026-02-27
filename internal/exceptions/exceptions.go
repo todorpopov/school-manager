@@ -42,6 +42,10 @@ func NewRequestValidationError(message string) *AppError {
 	return &AppError{"REQUEST_VALIDATION_ERROR", message, nil, nil}
 }
 
+func NewNotFoundError(message string) *AppError {
+	return &AppError{"NOT_FOUND", message, nil, nil}
+}
+
 type ErrorWriter struct {
 	logger *zap.Logger
 }
