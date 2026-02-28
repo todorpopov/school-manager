@@ -86,7 +86,7 @@ func TestValidateCreateUser(t *testing.T) {
 			},
 			expectError: true,
 			expectData: map[string]string{
-				"password": "Password length must be between 8 and 32",
+				"password": "Password length must be between 8 and 60",
 			},
 		},
 		{
@@ -236,7 +236,7 @@ func TestValidateUpdateUserPassword(t *testing.T) {
 			},
 			expectError: true,
 			expectData: map[string]string{
-				"password": "Password length must be between 8 and 32",
+				"password": "Password length must be between 8 and 60",
 			},
 		},
 		{

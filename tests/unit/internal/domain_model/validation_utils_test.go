@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	domain_model2 "github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/tests"
 )
 
@@ -101,7 +101,7 @@ func TestValidateString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := domain_model2.ValidateString(tt.input, tt.minLen, tt.maxLen, tt.required)
+			got := domain_model.ValidateString(tt.input, tt.minLen, tt.maxLen, tt.required)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -256,7 +256,7 @@ func TestValidateEmail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := domain_model2.ValidateEmail(tt.email, tt.required)
+			got := domain_model.ValidateEmail(tt.email, tt.required)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -321,31 +321,25 @@ func TestValidatePassword(t *testing.T) {
 			name:     "password too short - 7 characters",
 			password: tests.StrPtr("passwor"),
 			required: true,
-			want:     "Password length must be between 8 and 32",
+			want:     "Password length must be between 8 and 60",
 		},
 		{
 			name:     "password too short - 1 character",
 			password: tests.StrPtr("p"),
 			required: true,
-			want:     "Password length must be between 8 and 32",
+			want:     "Password length must be between 8 and 60",
 		},
 		{
-			name:     "password too long - 33 characters",
-			password: tests.StrPtr("123456789012345678901234567890123"),
+			name:     "password too long - 61 characters",
+			password: tests.StrPtr("1234567890123456789012345678901231234567890123456789012345678"),
 			required: true,
-			want:     "Password length must be between 8 and 32",
-		},
-		{
-			name:     "password too long - 50 characters",
-			password: tests.StrPtr("12345678901234567890123456789012345678901234567890"),
-			required: true,
-			want:     "Password length must be between 8 and 32",
+			want:     "Password length must be between 8 and 60",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := domain_model2.ValidatePassword(tt.password, tt.required)
+			got := domain_model.ValidatePassword(tt.password, tt.required)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -391,7 +385,7 @@ func TestValidateId(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := domain_model2.ValidateId(tt.id)
+			got := domain_model.ValidateId(tt.id)
 			assert.Equal(t, tt.want, got)
 		})
 	}
