@@ -138,6 +138,343 @@ func (suite *UserServiceSuite) TestCreateUser() {
 	}
 }
 
+func (suite *UserServiceSuite) TestGetUserById() {
+	testCases := []struct {
+		name                    string
+		createUser              *users.CreateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentId        bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully get user without transaction",
+			createUser: &users.CreateUser{
+				FirstName: "John",
+				LastName:  "Doe",
+				Email:     "john.doe@example.com",
+				Password:  "hashedPassword123",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentId:        false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully get user with transaction",
+			createUser: &users.CreateUser{
+				FirstName: "Jane",
+				LastName:  "Smith",
+				Email:     "jane.smith@example.com",
+				Password:  "hashedPassword456",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentId:        false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to get user without transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "User",
+				Email:     "nonexistent@example.com",
+				Password:  "hashedPassword789",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentId:        true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to get user with transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "Another",
+				LastName:  "NonExistent",
+				Email:     "another.nonexistent@example.com",
+				Password:  "hashedPassword101",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentId:        true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var savedUsr *users.User
+			var userIdToQuery int32
+
+			if tc.shouldCreateInitialUser {
+				savedUsr, err = suite.usersSvc.CreateUser(suite.Ctx, nil, tc.createUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(savedUsr, "Expected initial user to not be nil")
+				userIdToQuery = savedUsr.UserId
+			} else if tc.useNonExistentId {
+				userIdToQuery = 99999
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			foundUsr, getErr := suite.usersSvc.GetUserById(suite.Ctx, tx, userIdToQuery)
+
+			if tc.expectError {
+				suite.Require().NotNil(getErr, "Expected an error but got none")
+				suite.Require().Nil(foundUsr, "Expected user to be nil when error occurs")
+			} else {
+				suite.Require().Nil(getErr, "Expected no error but got: %v", getErr)
+				suite.Require().NotNil(foundUsr, "Expected user to be returned")
+				suite.Require().NotZero(foundUsr.UserId, "Expected user ID to be generated")
+				suite.Require().Equal(savedUsr.UserId, foundUsr.UserId)
+				suite.Require().Equal(savedUsr.FirstName, foundUsr.FirstName)
+				suite.Require().Equal(savedUsr.LastName, foundUsr.LastName)
+				suite.Require().Equal(savedUsr.Email, foundUsr.Email)
+				suite.Require().Nil(foundUsr.Password, "Expected password to not be returned")
+				suite.Require().Equal(savedUsr.Password, foundUsr.Password)
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+			}
+		})
+	}
+}
+
+func (suite *UserServiceSuite) TestGetUserByEmail() {
+	testCases := []struct {
+		name                    string
+		createUser              *users.CreateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentEmail     bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully get user by email without transaction",
+			createUser: &users.CreateUser{
+				FirstName: "Alice",
+				LastName:  "Johnson",
+				Email:     "alice.johnson@example.com",
+				Password:  "hashedPassword111",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentEmail:     false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully get user by email with transaction",
+			createUser: &users.CreateUser{
+				FirstName: "Bob",
+				LastName:  "Williams",
+				Email:     "bob.williams@example.com",
+				Password:  "hashedPassword222",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentEmail:     false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to get user by email without transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "User",
+				Email:     "nonexistent.email@example.com",
+				Password:  "hashedPassword333",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentEmail:     true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to get user by email with transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "Another",
+				LastName:  "NonExistent",
+				Email:     "another.nonexistent.email@example.com",
+				Password:  "hashedPassword444",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentEmail:     true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var savedUsr *users.User
+			var emailToQuery string
+
+			if tc.shouldCreateInitialUser {
+				savedUsr, err = suite.usersSvc.CreateUser(suite.Ctx, nil, tc.createUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(savedUsr, "Expected initial user to not be nil")
+				emailToQuery = savedUsr.Email
+			} else if tc.useNonExistentEmail {
+				emailToQuery = "doesnotexist@example.com"
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			foundUsr, getErr := suite.usersSvc.GetUserByEmail(suite.Ctx, tx, emailToQuery)
+
+			if tc.expectError {
+				suite.Require().NotNil(getErr, "Expected an error but got none")
+				suite.Require().Nil(foundUsr, "Expected user to be nil when error occurs")
+			} else {
+				suite.Require().Nil(getErr, "Expected no error but got: %v", getErr)
+				suite.Require().NotNil(foundUsr, "Expected user to be returned")
+				suite.Require().NotZero(foundUsr.UserId, "Expected user ID to be generated")
+				suite.Require().Equal(savedUsr.UserId, foundUsr.UserId)
+				suite.Require().Equal(savedUsr.FirstName, foundUsr.FirstName)
+				suite.Require().Equal(savedUsr.LastName, foundUsr.LastName)
+				suite.Require().Equal(savedUsr.Email, foundUsr.Email)
+				suite.Require().Nil(foundUsr.Password, "Expected password to not be returned")
+				suite.Require().Equal(savedUsr.Password, foundUsr.Password)
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+			}
+		})
+	}
+}
+
+func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
+	testCases := []struct {
+		name                    string
+		createUser              *users.CreateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentEmail     bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully get user by email with pass without transaction",
+			createUser: &users.CreateUser{
+				FirstName: "Alice",
+				LastName:  "Johnson",
+				Email:     "alice.johnson@example.com",
+				Password:  "hashedPassword111",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentEmail:     false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully get user by email with pass with transaction",
+			createUser: &users.CreateUser{
+				FirstName: "Bob",
+				LastName:  "Williams",
+				Email:     "bob.williams@example.com",
+				Password:  "hashedPassword222",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentEmail:     false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to get user by email with pass without transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "User",
+				Email:     "nonexistent.email@example.com",
+				Password:  "hashedPassword333",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentEmail:     true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to get user by email with pass with transaction - user does not exist",
+			createUser: &users.CreateUser{
+				FirstName: "Another",
+				LastName:  "NonExistent",
+				Email:     "another.nonexistent.email@example.com",
+				Password:  "hashedPassword444",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentEmail:     true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var savedUsr *users.User
+			var emailToQuery string
+
+			if tc.shouldCreateInitialUser {
+				savedUsr, err = suite.usersSvc.CreateUser(suite.Ctx, nil, tc.createUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(savedUsr, "Expected initial user to not be nil")
+				emailToQuery = savedUsr.Email
+			} else if tc.useNonExistentEmail {
+				emailToQuery = "doesnotexist@example.com"
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			foundUsr, getErr := suite.usersSvc.GetUserByEmailWithPass(suite.Ctx, tx, emailToQuery)
+
+			if tc.expectError {
+				suite.Require().NotNil(getErr, "Expected an error but got none")
+				suite.Require().Nil(foundUsr, "Expected user to be nil when error occurs")
+			} else {
+				suite.Require().Nil(getErr, "Expected no error but got: %v", getErr)
+				suite.Require().NotNil(foundUsr, "Expected user to be returned")
+				suite.Require().NotZero(foundUsr.UserId, "Expected user ID to be generated")
+				suite.Require().Equal(savedUsr.UserId, foundUsr.UserId)
+				suite.Require().Equal(savedUsr.FirstName, foundUsr.FirstName)
+				suite.Require().Equal(savedUsr.LastName, foundUsr.LastName)
+				suite.Require().Equal(savedUsr.Email, foundUsr.Email)
+				suite.Require().NotNil(foundUsr.Password, "Expected password to be returned")
+				match := suite.bcryptSvc.PasswordsMatch(*foundUsr.Password, tc.createUser.Password)
+				suite.Require().True(match, "Password should match the hash")
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+			}
+		})
+	}
+}
+
 func (suite *UserServiceSuite) TestUpdateUser() {
 	testCases := []struct {
 		name                    string
@@ -456,6 +793,280 @@ func (suite *UserServiceSuite) TestUpdateUserPassword() {
 					suite.Require().Equal(createdUser.Email, retrievedUser.Email)
 				}
 			}
+		})
+	}
+}
+
+func (suite *UserServiceSuite) TestDeleteUser() {
+	testCases := []struct {
+		name                    string
+		initialUser             *users.CreateUser
+		useTransaction          bool
+		shouldCreateInitialUser bool
+		useNonExistentUserId    bool
+		expectError             bool
+	}{
+		{
+			name: "Successfully delete user without transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Delete",
+				LastName:  "Test",
+				Email:     "delete.test@example.com",
+				Password:  "hashedPasswordDelete123",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			expectError:             false,
+		},
+		{
+			name: "Successfully delete user with transaction",
+			initialUser: &users.CreateUser{
+				FirstName: "Delete",
+				LastName:  "TestTwo",
+				Email:     "delete.test2@example.com",
+				Password:  "hashedPasswordDelete456",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: true,
+			useNonExistentUserId:    false,
+			expectError:             false,
+		},
+		{
+			name: "Fail to delete user without transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "Delete",
+				Email:     "nonexistent.delete@example.com",
+				Password:  "somePassword",
+			},
+			useTransaction:          false,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			expectError:             true,
+		},
+		{
+			name: "Fail to delete user with transaction - user does not exist",
+			initialUser: &users.CreateUser{
+				FirstName: "NonExistent",
+				LastName:  "DeleteTwo",
+				Email:     "nonexistent.delete2@example.com",
+				Password:  "somePassword2",
+			},
+			useTransaction:          true,
+			shouldCreateInitialUser: false,
+			useNonExistentUserId:    true,
+			expectError:             true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var createdUser *users.User
+			var userIdToDelete int32
+
+			if tc.shouldCreateInitialUser {
+				createdUser, err = suite.usersSvc.CreateUser(suite.Ctx, nil, tc.initialUser)
+				suite.Require().Nil(err, "Expected no error when creating initial user")
+				suite.Require().NotNil(createdUser, "Expected initial user to not be nil")
+				userIdToDelete = createdUser.UserId
+			} else if tc.useNonExistentUserId {
+				userIdToDelete = 99999
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			deleteErr := suite.usersSvc.DeleteUser(suite.Ctx, tx, userIdToDelete)
+
+			if tc.expectError {
+				suite.Require().NotNil(deleteErr, "Expected an error but got none")
+			} else {
+				suite.Require().Nil(deleteErr, "Expected no error but got: %v", deleteErr)
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+
+				retrievedUser, getErr := suite.usersSvc.GetUserById(suite.Ctx, nil, userIdToDelete)
+				suite.Require().NotNil(getErr, "Expected an error when retrieving deleted user")
+				suite.Require().Nil(retrievedUser, "Expected user to be nil after deletion")
+			}
+		})
+	}
+}
+
+func (suite *UserServiceSuite) TestGetUsers() {
+	testCases := []struct {
+		name           string
+		usersToCreate  []*users.CreateUser
+		useTransaction bool
+		expectError    bool
+	}{
+		{
+			name:           "Successfully get all users without transaction - empty database",
+			usersToCreate:  []*users.CreateUser{},
+			useTransaction: false,
+			expectError:    false,
+		},
+		{
+			name: "Successfully get all users without transaction - single user",
+			usersToCreate: []*users.CreateUser{
+				{
+					FirstName: "Single",
+					LastName:  "User",
+					Email:     "single.user@example.com",
+					Password:  "hashedPassword001",
+				},
+			},
+			useTransaction: false,
+			expectError:    false,
+		},
+		{
+			name: "Successfully get all users without transaction - multiple users",
+			usersToCreate: []*users.CreateUser{
+				{
+					FirstName: "First",
+					LastName:  "User",
+					Email:     "first.user@example.com",
+					Password:  "hashedPassword002",
+				},
+				{
+					FirstName: "Second",
+					LastName:  "User",
+					Email:     "second.user@example.com",
+					Password:  "hashedPassword003",
+				},
+				{
+					FirstName: "Third",
+					LastName:  "User",
+					Email:     "third.user@example.com",
+					Password:  "hashedPassword004",
+				},
+			},
+			useTransaction: false,
+			expectError:    false,
+		},
+		{
+			name:           "Successfully get all users with transaction - empty database",
+			usersToCreate:  []*users.CreateUser{},
+			useTransaction: true,
+			expectError:    false,
+		},
+		{
+			name: "Successfully get all users with transaction - single user",
+			usersToCreate: []*users.CreateUser{
+				{
+					FirstName: "Single",
+					LastName:  "UserTx",
+					Email:     "single.usertx@example.com",
+					Password:  "hashedPassword005",
+				},
+			},
+			useTransaction: true,
+			expectError:    false,
+		},
+		{
+			name: "Successfully get all users with transaction - multiple users",
+			usersToCreate: []*users.CreateUser{
+				{
+					FirstName: "Alpha",
+					LastName:  "User",
+					Email:     "alpha.user@example.com",
+					Password:  "hashedPassword006",
+				},
+				{
+					FirstName: "Beta",
+					LastName:  "User",
+					Email:     "beta.user@example.com",
+					Password:  "hashedPassword007",
+				},
+				{
+					FirstName: "Gamma",
+					LastName:  "User",
+					Email:     "gamma.user@example.com",
+					Password:  "hashedPassword008",
+				},
+				{
+					FirstName: "Delta",
+					LastName:  "User",
+					Email:     "delta.user@example.com",
+					Password:  "hashedPassword009",
+				},
+			},
+			useTransaction: true,
+			expectError:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			var tx pgx.Tx
+			var err error
+			var createdUsers []*users.User
+
+			for _, userToCreate := range tc.usersToCreate {
+				createdUser, createErr := suite.usersSvc.CreateUser(suite.Ctx, nil, userToCreate)
+				suite.Require().Nil(createErr, "Expected no error when creating user")
+				suite.Require().NotNil(createdUser, "Expected user to be created")
+				createdUsers = append(createdUsers, createdUser)
+			}
+
+			if tc.useTransaction {
+				tx, err = suite.Db.Pool.Begin(suite.Ctx)
+				suite.Require().NoError(err)
+				defer func() {
+					_ = tx.Rollback(suite.Ctx)
+				}()
+			}
+
+			retrievedUsers, getErr := suite.usersSvc.GetUsers(suite.Ctx, tx)
+
+			if tc.expectError {
+				suite.Require().NotNil(getErr, "Expected an error but got none")
+				suite.Require().Nil(retrievedUsers, "Expected users to be nil when error occurs")
+			} else {
+				suite.Require().Nil(getErr, "Expected no error but got: %v", getErr)
+
+				if len(createdUsers) == 0 {
+					suite.Require().True(retrievedUsers == nil || len(retrievedUsers) == 0,
+						"Expected users to be nil or empty slice for empty database")
+				} else {
+					suite.Require().NotNil(retrievedUsers, "Expected users slice to be returned")
+					suite.Require().Equal(len(createdUsers), len(retrievedUsers), "Expected number of retrieved users to match created users")
+
+					for _, createdUser := range createdUsers {
+						found := false
+						for _, retrievedUser := range retrievedUsers {
+							if retrievedUser.UserId == createdUser.UserId {
+								found = true
+								suite.Require().Equal(createdUser.FirstName, retrievedUser.FirstName)
+								suite.Require().Equal(createdUser.LastName, retrievedUser.LastName)
+								suite.Require().Equal(createdUser.Email, retrievedUser.Email)
+								suite.Require().Nil(retrievedUser.Password, "Expected password to not be returned")
+								suite.Require().Equal(createdUser.Password, retrievedUser.Password)
+								break
+							}
+						}
+						suite.Require().True(found, "Expected created user with ID %d to be in retrieved users", createdUser.UserId)
+					}
+				}
+
+				if tc.useTransaction {
+					commitErr := tx.Commit(suite.Ctx)
+					suite.Require().NoError(commitErr)
+				}
+			}
+
+			suite.CleanDatabase()
 		})
 	}
 }
