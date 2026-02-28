@@ -119,8 +119,10 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 	var rows pgx.Rows
 
 	if tx != nil {
+		ur.logger.Debug("Getting users in transaction")
 		rows, err = tx.Query(ctx, sql)
 	} else {
+		ur.logger.Debug("Getting users without transaction")
 		rows, err = ur.db.Pool.Query(ctx, sql)
 	}
 
