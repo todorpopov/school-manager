@@ -9,25 +9,26 @@ import (
 	"github.com/todorpopov/school-manager/tests/integration"
 )
 
-type RoleRepositorySuite struct {
+type RoleServiceSuite struct {
 	integration.TestSuite
-	rolesRepo roles.IRoleRepository
+	rolesSvc roles.IRoleService
 }
 
-func (suite *RoleRepositorySuite) SetupSuite() {
+func (suite *RoleServiceSuite) SetupSuite() {
 	suite.TestSuite.SetupSuite()
-	suite.rolesRepo = roles.NewRoleRepository(suite.Db, suite.Logger)
+	rolesRepo := roles.NewRoleRepository(suite.Db, suite.Logger)
+	suite.rolesSvc = roles.NewRoleService(rolesRepo)
 }
 
-func (suite *RoleRepositorySuite) SetupTest() {
+func (suite *RoleServiceSuite) SetupTest() {
 	suite.TestSuite.SetupTest()
 }
 
-func (suite *RoleRepositorySuite) TearDownSuite() {
+func (suite *RoleServiceSuite) TearDownSuite() {
 	suite.TestSuite.TearDownSuite()
 }
 
-func (suite *RoleRepositorySuite) TestCreateRole() {
+func (suite *RoleServiceSuite) TestCreateRole() {
 	testCases := []struct {
 		name           string
 		createRole     *roles.CreateRole
@@ -74,6 +75,14 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 			useTransaction: false,
 			expectError:    true,
 		},
+		{
+			name: "Fail to create role with name too long",
+			createRole: &roles.CreateRole{
+				RoleName: "ThisIsAVeryLongRoleNameThatExceedsTheMaximumLengthAllowedForRoleNamesInTheDatabaseSchemaAndShouldFailValidationBecauseItIsTooLongAndWillNotFitInTheColumnDefinedInTheDatabaseSchemaWhichHasAMaximumLengthOf255CharactersSoThisStringNeedsToBeEvenLongerToTriggerThatValidationError",
+			},
+			useTransaction: false,
+			expectError:    true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -81,8 +90,8 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 			var tx pgx.Tx
 			var err error
 
-			if tc.expectError && tc.createRole.RoleName != "" {
-				_, createErr := suite.rolesRepo.CreateRole(suite.Ctx, nil, tc.createRole)
+			if tc.expectError && tc.createRole.RoleName != "" && len(tc.createRole.RoleName) <= 255 {
+				_, createErr := suite.rolesSvc.CreateRole(suite.Ctx, nil, tc.createRole)
 				suite.Require().Nil(createErr, "Expected no error when creating initial duplicate role")
 			}
 
@@ -94,7 +103,7 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 				}()
 			}
 
-			role, appErr := suite.rolesRepo.CreateRole(suite.Ctx, tx, tc.createRole)
+			role, appErr := suite.rolesSvc.CreateRole(suite.Ctx, tx, tc.createRole)
 
 			if tc.expectError {
 				suite.Require().NotNil(appErr, "Expected an error but got none")
@@ -110,7 +119,7 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 					suite.Require().NoError(commitErr)
 				}
 
-				retrievedRole, getErr := suite.rolesRepo.GetRoleById(suite.Ctx, nil, role.RoleId)
+				retrievedRole, getErr := suite.rolesSvc.GetRoleById(suite.Ctx, nil, role.RoleId)
 				suite.Require().Nil(getErr, "Expected no error when retrieving role")
 				suite.Require().Equal(role.RoleId, retrievedRole.RoleId)
 				suite.Require().Equal(tc.createRole.RoleName, retrievedRole.RoleName)
@@ -119,7 +128,7 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 	}
 }
 
-func (suite *RoleRepositorySuite) TestGetRoleById() {
+func (suite *RoleServiceSuite) TestGetRoleById() {
 	testCases := []struct {
 		name                    string
 		createRole              *roles.CreateRole
@@ -127,6 +136,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		shouldCreateInitialRole bool
 		useNonExistentId        bool
 		useInvalidId            bool
+		invalidIdValue          int32
 		expectError             bool
 	}{
 		{
@@ -182,6 +192,19 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 			shouldCreateInitialRole: false,
 			useNonExistentId:        false,
 			useInvalidId:            true,
+			invalidIdValue:          -1,
+			expectError:             true,
+		},
+		{
+			name: "Fail to get role with invalid ID (zero)",
+			createRole: &roles.CreateRole{
+				RoleName: "Invalid2",
+			},
+			useTransaction:          false,
+			shouldCreateInitialRole: false,
+			useNonExistentId:        false,
+			useInvalidId:            true,
+			invalidIdValue:          0,
 			expectError:             true,
 		},
 	}
@@ -194,14 +217,14 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 			var roleIdToQuery int32
 
 			if tc.shouldCreateInitialRole {
-				savedRole, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, tc.createRole)
+				savedRole, err = suite.rolesSvc.CreateRole(suite.Ctx, nil, tc.createRole)
 				suite.Require().Nil(err, "Expected no error when creating initial role")
 				suite.Require().NotNil(savedRole, "Expected initial role to not be nil")
 				roleIdToQuery = savedRole.RoleId
 			} else if tc.useNonExistentId {
 				roleIdToQuery = 99999
 			} else if tc.useInvalidId {
-				roleIdToQuery = 0
+				roleIdToQuery = tc.invalidIdValue
 			}
 
 			if tc.useTransaction {
@@ -212,7 +235,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 				}()
 			}
 
-			foundRole, getErr := suite.rolesRepo.GetRoleById(suite.Ctx, tx, roleIdToQuery)
+			foundRole, getErr := suite.rolesSvc.GetRoleById(suite.Ctx, tx, roleIdToQuery)
 
 			if tc.expectError {
 				suite.Require().NotNil(getErr, "Expected an error but got none")
@@ -233,7 +256,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 	}
 }
 
-func (suite *RoleRepositorySuite) TestGetRoles() {
+func (suite *RoleServiceSuite) TestGetRoles() {
 	testCases := []struct {
 		name              string
 		rolesToCreate     []*roles.CreateRole
@@ -294,7 +317,7 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 			var createdRoles []*roles.Role
 
 			for _, createRole := range tc.rolesToCreate {
-				role, createErr := suite.rolesRepo.CreateRole(suite.Ctx, nil, createRole)
+				role, createErr := suite.rolesSvc.CreateRole(suite.Ctx, nil, createRole)
 				suite.Require().Nil(createErr, "Expected no error when creating initial role")
 				suite.Require().NotNil(role, "Expected role to not be nil")
 				createdRoles = append(createdRoles, role)
@@ -308,7 +331,7 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 				}()
 			}
 
-			foundRoles, getErr := suite.rolesRepo.GetRoles(suite.Ctx, tx)
+			foundRoles, getErr := suite.rolesSvc.GetRoles(suite.Ctx, tx)
 
 			if tc.expectError {
 				suite.Require().NotNil(getErr, "Expected an error but got none")
@@ -346,7 +369,7 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 	}
 }
 
-func (suite *RoleRepositorySuite) TestDeleteRole() {
+func (suite *RoleServiceSuite) TestDeleteRole() {
 	testCases := []struct {
 		name                    string
 		createRole              *roles.CreateRole
@@ -354,6 +377,7 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 		shouldCreateInitialRole bool
 		useNonExistentId        bool
 		useInvalidId            bool
+		invalidIdValue          int32
 		expectError             bool
 	}{
 		{
@@ -409,6 +433,7 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 			shouldCreateInitialRole: false,
 			useNonExistentId:        false,
 			useInvalidId:            true,
+			invalidIdValue:          -1,
 			expectError:             true,
 		},
 		{
@@ -420,6 +445,7 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 			shouldCreateInitialRole: false,
 			useNonExistentId:        false,
 			useInvalidId:            true,
+			invalidIdValue:          0,
 			expectError:             true,
 		},
 	}
@@ -432,18 +458,14 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 			var roleIdToDelete int32
 
 			if tc.shouldCreateInitialRole {
-				savedRole, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, tc.createRole)
+				savedRole, err = suite.rolesSvc.CreateRole(suite.Ctx, nil, tc.createRole)
 				suite.Require().Nil(err, "Expected no error when creating initial role")
 				suite.Require().NotNil(savedRole, "Expected initial role to not be nil")
 				roleIdToDelete = savedRole.RoleId
 			} else if tc.useNonExistentId {
 				roleIdToDelete = 99999
 			} else if tc.useInvalidId {
-				if tc.createRole.RoleName == "Invalid" {
-					roleIdToDelete = -1
-				} else {
-					roleIdToDelete = 0
-				}
+				roleIdToDelete = tc.invalidIdValue
 			}
 
 			if tc.useTransaction {
@@ -454,7 +476,7 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 				}()
 			}
 
-			deleteErr := suite.rolesRepo.DeleteRole(suite.Ctx, tx, roleIdToDelete)
+			deleteErr := suite.rolesSvc.DeleteRole(suite.Ctx, tx, roleIdToDelete)
 
 			if tc.expectError {
 				suite.Require().NotNil(deleteErr, "Expected an error but got none")
@@ -466,7 +488,7 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 					suite.Require().NoError(commitErr)
 				}
 
-				foundRole, getErr := suite.rolesRepo.GetRoleById(suite.Ctx, nil, roleIdToDelete)
+				foundRole, getErr := suite.rolesSvc.GetRoleById(suite.Ctx, nil, roleIdToDelete)
 				suite.Require().NotNil(getErr, "Expected an error when trying to get deleted role")
 				suite.Require().Nil(foundRole, "Expected role to be nil after deletion")
 			}
@@ -474,6 +496,6 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 	}
 }
 
-func TestRoleRepositorySuite(t *testing.T) {
-	suite.Run(t, new(RoleRepositorySuite))
+func TestRoleServiceSuite(t *testing.T) {
+	suite.Run(t, new(RoleServiceSuite))
 }
