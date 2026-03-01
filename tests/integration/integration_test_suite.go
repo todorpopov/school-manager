@@ -73,6 +73,9 @@ func (suite *TestSuite) CleanDatabase() {
 
 	_, err = suite.Db.Pool.Exec(suite.Ctx, "DELETE FROM users;")
 	suite.Require().NoError(err)
+
+	_, err = suite.Db.Pool.Exec(suite.Ctx, "DELETE FROM roles;")
+	suite.Require().NoError(err)
 }
 
 func (suite *TestSuite) SetupTest() {
