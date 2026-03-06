@@ -18,7 +18,7 @@ func ValidateCreateRole(createRole *CreateRole) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string
 
-	msg = domain_model.ValidateString(&createRole.RoleName, 1, 255, true)
+	msg = domain_model.ValidateRoleName(createRole.RoleName)
 	if msg != "" {
 		messages["role_name"] = msg
 	}

@@ -19,6 +19,8 @@ type IUserRepository interface {
 	UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError)
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
+
+	getUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
 }
 
 type UserRepository struct {
@@ -36,20 +38,57 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 		return nil, validationErr
 	}
 
-	sql := "INSERT INTO users (first_name, last_name, email, password)" +
-		"VALUES ($1, $2, $3, $4) " +
-		"RETURNING user_id, first_name, last_name, email, password;"
+	validRolesSql := `
+			SELECT COUNT(*) 
+			FROM unnest($1::text[]) AS rn(role_name)
+			LEFT JOIN roles r ON r.role_name = rn.role_name
+			WHERE r.role_id IS NULL;
+		`
+
+	var invalidCount int
+	var validRolesErr error
+
+	validRolesErr = ur.db.Pool.QueryRow(ctx, validRolesSql, createUser.Roles).Scan(&invalidCount)
+	if validRolesErr != nil {
+		ur.logger.Error("Failed to validate roles", zap.Error(validRolesErr))
+		return nil, exceptions.PgErrorToAppError(validRolesErr)
+	}
+
+	if invalidCount > 0 {
+		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", createUser.Roles), zap.Int("invalid_count", invalidCount))
+		return nil, exceptions.NewValidationError("Invalid roles", map[string]string{
+			"roles": "One or more roles do not exist",
+		})
+	}
+
+	sql := `
+		WITH new_user AS (
+			INSERT INTO users (first_name, last_name, email, password)
+			VALUES ($1, $2, $3, $4)
+			RETURNING user_id, first_name, last_name, email, password
+		)
+		INSERT INTO user_roles (user_id, role_id)
+		SELECT new_user.user_id, r.role_id
+		FROM new_user
+		CROSS JOIN unnest($5::text[]) AS rn(role_name)
+		INNER JOIN roles r ON r.role_name = rn.role_name
+		RETURNING (SELECT user_id FROM new_user), 
+				  (SELECT first_name FROM new_user), 
+				  (SELECT last_name FROM new_user), 
+				  (SELECT email FROM new_user), 
+				  (SELECT password FROM new_user);
+		`
 
 	var user User
 	var err error
 
 	if tx != nil {
 		ur.logger.Debug("Creating user in transaction")
-		err = tx.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password).
+		err = tx.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password, createUser.Roles).
 			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 	} else {
 		ur.logger.Debug("Creating user without transaction")
-		err = ur.db.Pool.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password).
+		err = ur.db.Pool.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password, createUser.Roles).
 			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 	}
 
@@ -58,6 +97,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	user.Roles = createUser.Roles
 	return &user, nil
 }
 
@@ -84,6 +124,13 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{userId})
+	if rolesErr != nil {
+		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
+		return nil, rolesErr
+	}
+	user.Roles = rolesMap[user.UserId]
+
 	return &user, nil
 }
 
@@ -108,6 +155,14 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, tx pgx.Tx, email s
 		ur.logger.Error("Failed to get user by email", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
 	}
+
+	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{user.UserId})
+	if rolesErr != nil {
+		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
+		return nil, rolesErr
+	}
+	user.Roles = rolesMap[user.UserId]
+
 	return &user, nil
 }
 
@@ -140,6 +195,28 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 			return nil, exceptions.PgErrorToAppError(err)
 		}
 		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		ur.logger.Error("Error iterating users rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	if len(users) > 0 {
+		userIds := make([]int32, len(users))
+		for i := range users {
+			userIds[i] = users[i].UserId
+		}
+
+		rolesMap, rolesErr := ur.getUsersRoles(ctx, userIds)
+		if rolesErr != nil {
+			ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
+			return nil, rolesErr
+		}
+
+		for i := range users {
+			users[i].Roles = rolesMap[users[i].UserId]
+		}
 	}
 
 	return users, nil
@@ -232,4 +309,49 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 	}
 
 	return nil
+}
+
+func (ur *UserRepository) getUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+	if len(userIds) == 0 {
+		return make(map[int32][]string), nil
+	}
+
+	sql := `
+		SELECT ur.user_id, r.role_name 
+		FROM user_roles ur
+		INNER JOIN roles r ON ur.role_id = r.role_id
+		WHERE ur.user_id = ANY($1)
+		ORDER BY ur.user_id, r.role_name;
+	`
+
+	rows, err := ur.db.Pool.Query(ctx, sql, userIds)
+	if err != nil {
+		ur.logger.Error("Failed to get users roles", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	rolesMap := make(map[int32][]string)
+
+	for _, userId := range userIds {
+		rolesMap[userId] = []string{}
+	}
+
+	for rows.Next() {
+		var userId int32
+		var roleName string
+		err = rows.Scan(&userId, &roleName)
+		if err != nil {
+			ur.logger.Error("Failed to scan user role row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+		rolesMap[userId] = append(rolesMap[userId], roleName)
+	}
+
+	if err = rows.Err(); err != nil {
+		ur.logger.Error("Error iterating user roles rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return rolesMap, nil
 }

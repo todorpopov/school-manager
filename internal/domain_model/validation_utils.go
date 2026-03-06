@@ -53,3 +53,18 @@ func ValidateId(id int32) string {
 	}
 	return ""
 }
+
+func ValidateRoleName(roleName string) string {
+	if roleName == "" {
+		return "Role name cannot be empty"
+	}
+	if len(roleName) < 1 || len(roleName) > 255 {
+		return "Role name length must be between 1 and 255"
+	}
+	regexPattern := "^[A-Z0-9_]+$"
+	matched, _ := regexp.MatchString(regexPattern, roleName)
+	if !matched {
+		return "Role name can only contain uppercase letters, numbers, and underscores"
+	}
+	return ""
+}

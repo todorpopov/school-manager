@@ -1,23 +1,27 @@
 package users
 
 import (
+	"fmt"
+
 	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
 type User struct {
-	UserId    int32   `json:"user_id"`
-	FirstName string  `json:"first_name"`
-	LastName  string  `json:"last_name"`
-	Email     string  `json:"email"`
-	Password  *string `json:"password,omitempty"`
+	UserId    int32    `json:"user_id"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Email     string   `json:"email"`
+	Password  *string  `json:"password,omitempty"`
+	Roles     []string `json:"roles,omitempty"`
 }
 
 type CreateUser struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Email     string   `json:"email"`
+	Password  string   `json:"password"`
+	Roles     []string `json:"roles"`
 }
 
 type UpdateUser struct {
@@ -64,6 +68,17 @@ func ValidateCreateUser(createUser *CreateUser) *exceptions.AppError {
 	msg = domain_model.ValidatePassword(&createUser.Password, true)
 	if msg != "" {
 		messages["password"] = msg
+	}
+
+	if len(createUser.Roles) == 0 {
+		messages["roles"] = "At least one role is required to create a user"
+	}
+
+	for _, role := range createUser.Roles {
+		msg = domain_model.ValidateRoleName(role)
+		if msg != "" {
+			messages[fmt.Sprintf("roles[%s]", role)] = msg
+		}
 	}
 
 	if len(messages) > 0 {
