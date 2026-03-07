@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/todorpopov/school-manager/internal/exceptions"
+	"github.com/todorpopov/school-manager/internal/server/writer"
+	"github.com/todorpopov/school-manager/internal/user_auth"
 	"go.uber.org/zap"
 )
 
@@ -37,6 +40,32 @@ func Logging(logger *zap.Logger) Middleware {
 				zap.Int("status", rw.statusCode),
 				zap.Duration("duration", duration),
 			)
+		})
+	}
+}
+
+func RequireRoles(hw *writer.HttpWriter, authSvc user_auth.IAuthService, roles ...string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			sessionId := r.Header.Get("X-Session-Id")
+			if sessionId == "" {
+				hw.WriteError(w, exceptions.NewRequestValidationError("Session not provided"))
+				return
+			}
+
+			request := user_auth.AuthRequest{SessionId: sessionId, RequiredRoles: roles}
+			authorized, err := authSvc.IsRequestAuthorized(r.Context(), &request)
+			if err != nil {
+				hw.WriteError(w, err)
+				return
+			}
+
+			if !authorized {
+				hw.WriteError(w, exceptions.NewAppError("UNAUTHORIZED", "Unauthorized", nil))
+				return
+			}
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }

@@ -62,7 +62,7 @@ func (s *HttpServer) RegisterRoutes(
 	roleSvc roles.IRoleService,
 ) {
 	routes.RegisterGeneralRoutes(s.mux, s.writer, s.logger)
-	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, usrSvc)
+	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, usrSvc, authSvc)
 	routes.RegisterAuthRoutes(s.mux, s.writer, s.logger, authSvc)
-	routes.RegisterRoleRoutes(s.mux, s.writer, s.logger, roleSvc)
+	routes.RegisterRoleRoutes(s.mux, s.writer, s.logger, roleSvc, authSvc)
 }

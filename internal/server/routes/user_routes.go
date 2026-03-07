@@ -7,18 +7,21 @@ import (
 	"github.com/todorpopov/school-manager/internal/server/handlers"
 	"github.com/todorpopov/school-manager/internal/server/middleware"
 	"github.com/todorpopov/school-manager/internal/server/writer"
+	"github.com/todorpopov/school-manager/internal/user_auth"
 	"go.uber.org/zap"
 )
 
-func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger, usrSvc users.IUserService) {
+func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger, usrSvc users.IUserService, authSvc user_auth.IAuthService) {
 	logger.Info("Registering user routes")
 
 	logging := middleware.Logging(logger)
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
 
 	s.Handle("POST /api/user",
 		middleware.Chain(
 			handlers.CreateUserHandler(writer, usrSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 
@@ -26,6 +29,7 @@ func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.GetUserByIdHandler(writer, usrSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 
@@ -33,6 +37,7 @@ func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.GetUserByEmailHandler(writer, usrSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 
@@ -47,6 +52,7 @@ func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.UpdateUserHandler(writer, usrSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 
@@ -61,6 +67,7 @@ func RegisterUserRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.DeleteUserHandler(writer, usrSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 }
