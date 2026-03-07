@@ -26,15 +26,17 @@ type CreateUser struct {
 
 type UpdateUser struct {
 	UserId    int32
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
 }
 
 type UpdateUserRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
 }
 
 type UpdateUserPassword struct {
@@ -109,6 +111,17 @@ func ValidateUpdateUser(updateUser *UpdateUser) *exceptions.AppError {
 	msg = domain_model.ValidateEmail(&updateUser.Email, true)
 	if msg != "" {
 		messages["email"] = msg
+	}
+
+	if len(updateUser.Roles) == 0 {
+		messages["roles"] = "At least one role is required to create a user"
+	}
+
+	for _, role := range updateUser.Roles {
+		msg = domain_model.ValidateRoleName(role)
+		if msg != "" {
+			messages[fmt.Sprintf("roles[%s]", role)] = msg
+		}
 	}
 
 	if len(messages) > 0 {

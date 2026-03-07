@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -21,6 +22,8 @@ type IUserRepository interface {
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
 	getUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	areRolesValid(ctx context.Context, roles []string) bool
+	deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
 
 type UserRepository struct {
@@ -38,24 +41,8 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 		return nil, validationErr
 	}
 
-	validRolesSql := `
-			SELECT COUNT(*) 
-			FROM unnest($1::text[]) AS rn(role_name)
-			LEFT JOIN roles r ON r.role_name = rn.role_name
-			WHERE r.role_id IS NULL;
-		`
-
-	var invalidCount int
-	var validRolesErr error
-
-	validRolesErr = ur.db.Pool.QueryRow(ctx, validRolesSql, createUser.Roles).Scan(&invalidCount)
-	if validRolesErr != nil {
-		ur.logger.Error("Failed to validate roles", zap.Error(validRolesErr))
-		return nil, exceptions.PgErrorToAppError(validRolesErr)
-	}
-
-	if invalidCount > 0 {
-		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", createUser.Roles), zap.Int("invalid_count", invalidCount))
+	if validRoles := ur.areRolesValid(ctx, createUser.Roles); !validRoles {
+		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", createUser.Roles))
 		return nil, exceptions.NewValidationError("Invalid roles", map[string]string{
 			"roles": "One or more roles do not exist",
 		})
@@ -227,22 +214,77 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 		return nil, validationErr
 	}
 
-	sql := "UPDATE users " +
-		" SET first_name = $1, last_name = $2, email = $3 " +
-		"WHERE user_id = $4 " +
-		"RETURNING user_id, first_name, last_name, email, password;"
+	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{updateUser.UserId})
+	if rolesErr != nil {
+		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
+		return nil, rolesErr
+	}
 
-	var user User
+	existingUserRoles := rolesMap[updateUser.UserId]
+	slices.Sort(existingUserRoles)
+	slices.Sort(updateUser.Roles)
+
 	var err error
+	var user User
 
-	if tx != nil {
-		ur.logger.Debug("Updating user in transaction")
-		err = tx.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
-			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+	if slices.Compare(existingUserRoles, updateUser.Roles) != 0 {
+		ur.logger.Debug("Updating roles", zap.Strings("existing_roles", existingUserRoles), zap.Strings("updated_roles", updateUser.Roles))
+
+		if validRoles := ur.areRolesValid(ctx, updateUser.Roles); !validRoles {
+			ur.logger.Warn("Invalid roles provided", zap.Strings("roles", updateUser.Roles))
+			return nil, exceptions.NewValidationError("Invalid roles", map[string]string{
+				"roles": "One or more roles do not exist",
+			})
+		}
+
+		if delRolesErr := ur.deleteUserRoles(ctx, tx, updateUser.UserId); delRolesErr != nil {
+			ur.logger.Error("Failed to delete user roles", zap.Error(delRolesErr))
+			return nil, delRolesErr
+		}
+
+		sql := `
+			WITH updated_user AS (
+				UPDATE users
+				SET first_name = $1, last_name = $2, email = $3
+				WHERE user_id = $4
+				RETURNING user_id, first_name, last_name, email, password
+			)
+			INSERT INTO user_roles (user_id, role_id)
+			SELECT u.user_id, r.role_id
+			FROM updated_user u
+			CROSS JOIN unnest($5::text[]) AS rn(role_name)
+			INNER JOIN roles r ON r.role_name = rn.role_name
+			RETURNING (SELECT user_id FROM updated_user), 
+					  (SELECT first_name FROM updated_user), 
+					  (SELECT last_name FROM updated_user), 
+					  (SELECT email FROM updated_user), 
+					  (SELECT password FROM updated_user);
+		`
+
+		if tx != nil {
+			ur.logger.Debug("Updating user with roles in transaction")
+			err = tx.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId, updateUser.Roles).
+				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+		} else {
+			ur.logger.Debug("Updating user with roles without transaction")
+			err = ur.db.Pool.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId, updateUser.Roles).
+				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+		}
 	} else {
-		ur.logger.Debug("Updating user without transaction")
-		err = ur.db.Pool.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
-			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+		sql := "UPDATE users " +
+			" SET first_name = $1, last_name = $2, email = $3 " +
+			"WHERE user_id = $4 " +
+			"RETURNING user_id, first_name, last_name, email, password;"
+
+		if tx != nil {
+			ur.logger.Debug("Updating user in transaction")
+			err = tx.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
+				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+		} else {
+			ur.logger.Debug("Updating user without transaction")
+			err = ur.db.Pool.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
+				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
+		}
 	}
 
 	if err != nil {
@@ -250,6 +292,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	user.Roles = updateUser.Roles
 	return &user, nil
 }
 
@@ -308,6 +351,12 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 		return exceptions.NewNotFoundError("User not found")
 	}
 
+	delRolesErr := ur.deleteUserRoles(ctx, tx, userId)
+	if delRolesErr != nil {
+		ur.logger.Error("Failed to delete user roles", zap.Error(delRolesErr))
+		return delRolesErr
+	}
+
 	return nil
 }
 
@@ -354,4 +403,45 @@ func (ur *UserRepository) getUsersRoles(ctx context.Context, userIds []int32) (m
 	}
 
 	return rolesMap, nil
+}
+
+func (ur *UserRepository) areRolesValid(ctx context.Context, roles []string) bool {
+	validRolesSql := `
+			SELECT COUNT(*) 
+			FROM unnest($1::text[]) AS rn(role_name)
+			LEFT JOIN roles r ON r.role_name = rn.role_name
+			WHERE r.role_id IS NULL;
+		`
+
+	var invalidCount int
+	var validRolesErr error
+
+	validRolesErr = ur.db.Pool.QueryRow(ctx, validRolesSql, roles).Scan(&invalidCount)
+	if validRolesErr != nil {
+		ur.logger.Error("Failed to validate roles", zap.Error(validRolesErr))
+		return false
+	}
+
+	if invalidCount > 0 {
+		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", roles), zap.Int("invalid_count", invalidCount))
+		return false
+	}
+
+	return true
+}
+
+func (ur *UserRepository) deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {
+	deleteRolesSql := "DELETE FROM user_roles WHERE user_id = $1;"
+	var deleteErr error
+	if tx != nil {
+		_, deleteErr = tx.Exec(ctx, deleteRolesSql, userId)
+	} else {
+		_, deleteErr = ur.db.Pool.Exec(ctx, deleteRolesSql, userId)
+	}
+
+	if deleteErr != nil {
+		ur.logger.Error("Failed to delete existing roles", zap.Error(deleteErr))
+		return exceptions.PgErrorToAppError(deleteErr)
+	}
+	return nil
 }

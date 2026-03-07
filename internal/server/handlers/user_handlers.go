@@ -99,6 +99,7 @@ func UpdateUserHandler(hw *writer.HttpWriter, usrSvc users.IUserService, logger 
 			FirstName: request.FirstName,
 			LastName:  request.LastName,
 			Email:     request.Email,
+			Roles:     request.Roles,
 		}
 
 		usr, updateErr := usrSvc.UpdateUser(r.Context(), nil, updateUser)
@@ -156,6 +157,7 @@ func DeleteUserHandler(hw *writer.HttpWriter, usrSvc users.IUserService, logger 
 		if delErr != nil {
 			logger.Error("Failed to delete user", zap.Int("user_id", userId), zap.Error(delErr))
 			hw.WriteError(w, delErr)
+			return
 		}
 
 		hw.WriteResponse(w, http.StatusOK, internal.NewApiResponse(false, "User deleted successfully", nil))
