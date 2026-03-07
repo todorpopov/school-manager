@@ -18,6 +18,9 @@ type IUserService interface {
 	UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *UpdateUser) (*User, *exceptions.AppError)
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
+
+	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 }
 
 type UserService struct {
@@ -113,4 +116,18 @@ func (us *UserService) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) 
 		return exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 	return us.usrRepo.DeleteUser(ctx, tx, userId)
+}
+
+func (us *UserService) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
+		return nil, exceptions.NewValidationError("Invalid IDs", messages)
+	}
+	return us.usrRepo.GetUsersRoles(ctx, userIds)
+}
+
+func (us *UserService) AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError) {
+	if messages := domain_model.ValidateRoleNames(roles, true); len(messages) != 0 {
+		return false, exceptions.NewValidationError("Invalid roles", messages)
+	}
+	return us.usrRepo.AreRolesValid(ctx, roles)
 }

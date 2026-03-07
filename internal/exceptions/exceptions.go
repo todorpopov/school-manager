@@ -82,6 +82,12 @@ func (eh *ErrorWriter) WriteError(w http.ResponseWriter, err error) {
 
 func (eh *ErrorWriter) writeAppError(w http.ResponseWriter, appErr *AppError) {
 	switch appErr.Code {
+	case "SESSION_EXPIRED":
+		eh.sendErrorResponse(w, http.StatusUnauthorized, appErr.Message)
+	case "UNAUTHORIZED":
+		eh.sendErrorResponse(w, http.StatusUnauthorized, appErr.Message)
+	case "ROLES_DO_NOT_EXIST":
+		eh.sendErrorResponse(w, http.StatusBadRequest, appErr.Message)
 	case "INTERNAL_ERROR":
 		eh.sendErrorResponse(w, http.StatusInternalServerError, appErr.Message)
 	case "VALIDATION_ERROR":

@@ -2,20 +2,18 @@ package user_auth
 
 import (
 	"context"
+	"slices"
 
 	"github.com/todorpopov/school-manager/internal"
-	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
 type IAuthService interface {
-	validateRegisterRequest(registerRequest *RegisterRequest) *exceptions.AppError
-	validateLoginRequest(loginRequest *LoginRequest) *exceptions.AppError
-
 	RegisterUser(ctx context.Context, registerRequest *RegisterRequest) (*AuthResponse, *exceptions.AppError)
 	LogUserIn(ctx context.Context, loginRequest *LoginRequest) (*AuthResponse, *exceptions.AppError)
+	IsRequestAuthorized(ctx context.Context, request *AuthRequest) (bool, *exceptions.AppError)
 }
 
 type AuthService struct {
@@ -32,50 +30,8 @@ func NewAuthService(bcryptSvc internal.IBCryptService, userSvc users.IUserServic
 	}
 }
 
-func (as *AuthService) validateRegisterRequest(registerRequest *RegisterRequest) *exceptions.AppError {
-	messages := map[string]string{}
-
-	if msg := domain_model.ValidateString(&registerRequest.FirstName, 1, 255, true); msg != "" {
-		messages["first_name"] = msg
-	}
-
-	if msg := domain_model.ValidateString(&registerRequest.LastName, 1, 255, true); msg != "" {
-		messages["last_name"] = msg
-	}
-
-	if msg := domain_model.ValidateEmail(&registerRequest.Email, true); msg != "" {
-		messages["email"] = msg
-	}
-
-	if msg := domain_model.ValidatePassword(&registerRequest.Password, true); msg != "" {
-		messages["password"] = msg
-	}
-
-	if len(messages) > 0 {
-		return exceptions.NewValidationError("Validation failed during registration", messages)
-	}
-	return nil
-}
-
-func (as *AuthService) validateLoginRequest(loginRequest *LoginRequest) *exceptions.AppError {
-	messages := map[string]string{}
-
-	if msg := domain_model.ValidateEmail(&loginRequest.Email, true); msg != "" {
-		messages["email"] = msg
-	}
-
-	if msg := domain_model.ValidatePassword(&loginRequest.Password, true); msg != "" {
-		messages["password"] = msg
-	}
-
-	if len(messages) > 0 {
-		return exceptions.NewValidationError("Validation failed during login", messages)
-	}
-	return nil
-}
-
 func (as *AuthService) RegisterUser(ctx context.Context, registerRequest *RegisterRequest) (*AuthResponse, *exceptions.AppError) {
-	if err := as.validateRegisterRequest(registerRequest); err != nil {
+	if err := ValidateRegisterRequest(registerRequest); err != nil {
 		return nil, err
 	}
 
@@ -102,7 +58,7 @@ func (as *AuthService) RegisterUser(ctx context.Context, registerRequest *Regist
 }
 
 func (as *AuthService) LogUserIn(ctx context.Context, loginRequest *LoginRequest) (*AuthResponse, *exceptions.AppError) {
-	if err := as.validateLoginRequest(loginRequest); err != nil {
+	if err := ValidateLoginRequest(loginRequest); err != nil {
 		return nil, err
 	}
 
@@ -124,4 +80,29 @@ func (as *AuthService) LogUserIn(ctx context.Context, loginRequest *LoginRequest
 		SessionId: session.SessionId,
 	}
 	return resp, nil
+}
+
+func (as *AuthService) IsRequestAuthorized(ctx context.Context, request *AuthRequest) (bool, *exceptions.AppError) {
+	if err := ValidateAuthRequest(request); err != nil {
+		return false, err
+	}
+
+	session, err := as.sessionSvc.GetActiveSessionById(ctx, nil, request.SessionId)
+	if err != nil {
+		return false, err
+	}
+
+	rolesMap, err := as.userSvc.GetUsersRoles(ctx, []int32{session.UserId})
+	if err != nil {
+		return false, err
+	}
+
+	userRoles := rolesMap[session.UserId]
+
+	for _, role := range request.RequiredRoles {
+		if slices.Contains(userRoles, role) {
+			return true, nil
+		}
+	}
+	return false, exceptions.NewAppError("UNAUTHORIZED", "Unauthorized", nil)
 }

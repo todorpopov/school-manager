@@ -21,8 +21,8 @@ type IUserRepository interface {
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
-	getUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
-	areRolesValid(ctx context.Context, roles []string) bool
+	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 	deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
 
@@ -41,11 +41,9 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 		return nil, validationErr
 	}
 
-	if validRoles := ur.areRolesValid(ctx, createUser.Roles); !validRoles {
-		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", createUser.Roles))
-		return nil, exceptions.NewValidationError("Invalid roles", map[string]string{
-			"roles": "One or more roles do not exist",
-		})
+	if _, rolesErr2 := ur.AreRolesValid(ctx, createUser.Roles); rolesErr2 != nil {
+		ur.logger.Error("Failed to validate roles", zap.Error(rolesErr2))
+		return nil, rolesErr2
 	}
 
 	sql := `
@@ -111,7 +109,7 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{userId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{userId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -143,7 +141,7 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, tx pgx.Tx, email s
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{user.UserId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{user.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -195,7 +193,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 			userIds[i] = users[i].UserId
 		}
 
-		rolesMap, rolesErr := ur.getUsersRoles(ctx, userIds)
+		rolesMap, rolesErr := ur.GetUsersRoles(ctx, userIds)
 		if rolesErr != nil {
 			ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 			return nil, rolesErr
@@ -214,7 +212,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 		return nil, validationErr
 	}
 
-	rolesMap, rolesErr := ur.getUsersRoles(ctx, []int32{updateUser.UserId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{updateUser.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -230,11 +228,9 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 	if slices.Compare(existingUserRoles, updateUser.Roles) != 0 {
 		ur.logger.Debug("Updating roles", zap.Strings("existing_roles", existingUserRoles), zap.Strings("updated_roles", updateUser.Roles))
 
-		if validRoles := ur.areRolesValid(ctx, updateUser.Roles); !validRoles {
-			ur.logger.Warn("Invalid roles provided", zap.Strings("roles", updateUser.Roles))
-			return nil, exceptions.NewValidationError("Invalid roles", map[string]string{
-				"roles": "One or more roles do not exist",
-			})
+		if _, rolesErr2 := ur.AreRolesValid(ctx, updateUser.Roles); rolesErr2 != nil {
+			ur.logger.Error("Failed to validate roles", zap.Error(rolesErr2))
+			return nil, rolesErr2
 		}
 
 		if delRolesErr := ur.deleteUserRoles(ctx, tx, updateUser.UserId); delRolesErr != nil {
@@ -360,9 +356,9 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 	return nil
 }
 
-func (ur *UserRepository) getUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
-	if len(userIds) == 0 {
-		return make(map[int32][]string), nil
+func (ur *UserRepository) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
+		return nil, exceptions.NewValidationError("Invalid IDs", messages)
 	}
 
 	sql := `
@@ -405,13 +401,17 @@ func (ur *UserRepository) getUsersRoles(ctx context.Context, userIds []int32) (m
 	return rolesMap, nil
 }
 
-func (ur *UserRepository) areRolesValid(ctx context.Context, roles []string) bool {
+func (ur *UserRepository) AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError) {
+	if messages := domain_model.ValidateRoleNames(roles, true); len(messages) != 0 {
+		return false, exceptions.NewValidationError("Invalid roles", messages)
+	}
+
 	validRolesSql := `
-			SELECT COUNT(*) 
-			FROM unnest($1::text[]) AS rn(role_name)
-			LEFT JOIN roles r ON r.role_name = rn.role_name
-			WHERE r.role_id IS NULL;
-		`
+		SELECT COUNT(*) 
+		FROM unnest($1::text[]) AS rn(role_name)
+		LEFT JOIN roles r ON r.role_name = rn.role_name
+		WHERE r.role_id IS NULL;
+	`
 
 	var invalidCount int
 	var validRolesErr error
@@ -419,15 +419,15 @@ func (ur *UserRepository) areRolesValid(ctx context.Context, roles []string) boo
 	validRolesErr = ur.db.Pool.QueryRow(ctx, validRolesSql, roles).Scan(&invalidCount)
 	if validRolesErr != nil {
 		ur.logger.Error("Failed to validate roles", zap.Error(validRolesErr))
-		return false
+		return false, exceptions.PgErrorToAppError(validRolesErr)
 	}
 
 	if invalidCount > 0 {
 		ur.logger.Warn("Invalid roles provided", zap.Strings("roles", roles), zap.Int("invalid_count", invalidCount))
-		return false
+		return false, exceptions.NewAppError("ROLES_DO_NOT_EXIST", "The provided roles do not exist", nil)
 	}
 
-	return true
+	return true, nil
 }
 
 func (ur *UserRepository) deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError {

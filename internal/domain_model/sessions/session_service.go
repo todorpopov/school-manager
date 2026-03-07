@@ -10,6 +10,7 @@ import (
 
 type ISessionService interface {
 	CreateOrRenewSession(ctx context.Context, tx pgx.Tx, userId int32) (*Session, *exceptions.AppError)
+	GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError)
 }
 
 type SessionService struct {
@@ -26,4 +27,8 @@ func (ss *SessionService) CreateOrRenewSession(ctx context.Context, tx pgx.Tx, u
 	}
 
 	return ss.sessionRepo.CreateOrRenewSession(ctx, tx, userId)
+}
+
+func (ss *SessionService) GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError) {
+	return ss.sessionRepo.GetActiveSessionById(ctx, tx, sessionId)
 }

@@ -54,6 +54,21 @@ func ValidateId(id int32) string {
 	return ""
 }
 
+func ValidateIds(ids []int32, assertAtLeastOne bool) map[string]string {
+	messages := map[string]string{}
+	if assertAtLeastOne && len(ids) == 0 {
+		messages["ids"] = "At least one id is required"
+		return messages
+	}
+	for _, id := range ids {
+		msg := ValidateId(id)
+		if msg != "" {
+			messages[string(id)] = msg
+		}
+	}
+	return messages
+}
+
 func ValidateRoleName(roleName string) string {
 	if roleName == "" {
 		return "Role name cannot be empty"
@@ -67,4 +82,19 @@ func ValidateRoleName(roleName string) string {
 		return "Role name can only contain uppercase letters, numbers, and underscores"
 	}
 	return ""
+}
+
+func ValidateRoleNames(roleNames []string, assertAtLeastOne bool) map[string]string {
+	messages := map[string]string{}
+	if assertAtLeastOne && len(roleNames) == 0 {
+		messages["role_names"] = "At least one role name is required"
+		return messages
+	}
+	for _, roleName := range roleNames {
+		msg := ValidateRoleName(roleName)
+		if msg != "" {
+			messages[roleName] = msg
+		}
+	}
+	return messages
 }

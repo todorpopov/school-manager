@@ -12,6 +12,7 @@ import (
 
 type ISessionRepository interface {
 	CreateOrRenewSession(ctx context.Context, tx pgx.Tx, userId int32) (*Session, *exceptions.AppError)
+	GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError)
 }
 
 type SessionRepository struct {
@@ -51,5 +52,37 @@ func (sr *SessionRepository) CreateOrRenewSession(ctx context.Context, tx pgx.Tx
 		sr.logger.Error("Failed to create or get session", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
 	}
+	return &session, nil
+}
+
+func (sr *SessionRepository) GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError) {
+	sql := "SELECT session_id, user_id, expires_at FROM sessions WHERE session_id = $1;"
+	var session Session
+	var err error
+	if tx != nil {
+		sr.logger.Debug("Getting session in transaction")
+		err = tx.QueryRow(ctx, sql, sessionId).Scan(
+			&session.SessionId,
+			&session.UserId,
+			&session.ExpiresAt,
+		)
+	} else {
+		sr.logger.Debug("Getting session without transaction")
+		err = sr.db.Pool.QueryRow(ctx, sql, sessionId).Scan(
+			&session.SessionId,
+			&session.UserId,
+			&session.ExpiresAt,
+		)
+	}
+	if err != nil {
+		sr.logger.Error("Failed to get session", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	if session.ExpiresAt.Before(time.Now()) {
+		sr.logger.Debug("Session has expired", zap.String("session_id", sessionId))
+		return nil, exceptions.NewAppError("SESSION_EXPIRED", "Session has expired", nil)
+	}
+
 	return &session, nil
 }
