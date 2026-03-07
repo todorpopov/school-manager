@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/suite"
+	"github.com/todorpopov/school-manager/internal/domain_model/roles"
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/tests/integration"
@@ -16,16 +17,25 @@ type SessionRepositorySuite struct {
 	integration.TestSuite
 	sessionRepo sessions.ISessionRepository
 	userRepo    users.IUserRepository
+	rolesRepo   roles.IRoleRepository
 }
 
 func (suite *SessionRepositorySuite) SetupSuite() {
 	suite.TestSuite.SetupSuite()
 	suite.sessionRepo = sessions.NewSessionRepository(suite.Db, suite.Env.SessionExpiration, suite.Logger)
 	suite.userRepo = users.NewUserRepository(suite.Db, suite.Logger)
+	suite.rolesRepo = roles.NewRoleRepository(suite.Db, suite.Logger)
 }
 
 func (suite *SessionRepositorySuite) SetupTest() {
 	suite.TestSuite.SetupTest()
+
+	_, err := suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "ADMIN"})
+	suite.Require().Nil(err)
+	_, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "TEACHER"})
+	suite.Require().Nil(err)
+	_, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "STUDENT"})
+	suite.Require().Nil(err)
 }
 
 func (suite *SessionRepositorySuite) TearDownSuite() {
@@ -92,6 +102,7 @@ func (suite *SessionRepositorySuite) TestCreateOrRenewSession() {
 					LastName:  "User",
 					Email:     fmt.Sprintf("session.%d@example.com", idx),
 					Password:  "hashedPassword123",
+					Roles:     []string{"STUDENT"},
 				}
 				savedUser, createErr := suite.userRepo.CreateUser(suite.Ctx, nil, createUser)
 				suite.Require().Nil(createErr, "Expected no error when creating user")

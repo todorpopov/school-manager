@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/suite"
 	"github.com/todorpopov/school-manager/internal"
+	"github.com/todorpopov/school-manager/internal/domain_model/roles"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/tests/integration"
 )
@@ -14,6 +15,7 @@ type UserServiceSuite struct {
 	integration.TestSuite
 	bcryptSvc internal.IBCryptService
 	usersSvc  users.IUserService
+	rolesRepo roles.IRoleRepository
 }
 
 func (suite *UserServiceSuite) SetupSuite() {
@@ -21,10 +23,18 @@ func (suite *UserServiceSuite) SetupSuite() {
 	suite.bcryptSvc = internal.NewBCryptService()
 	usersRepo := users.NewUserRepository(suite.Db, suite.Logger)
 	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo)
+	suite.rolesRepo = roles.NewRoleRepository(suite.Db, suite.Logger)
 }
 
 func (suite *UserServiceSuite) SetupTest() {
 	suite.TestSuite.SetupTest()
+
+	_, err := suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "ADMIN"})
+	suite.Require().Nil(err)
+	_, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "TEACHER"})
+	suite.Require().Nil(err)
+	_, err = suite.rolesRepo.CreateRole(suite.Ctx, nil, &roles.CreateRole{RoleName: "STUDENT"})
+	suite.Require().Nil(err)
 }
 
 func (suite *UserServiceSuite) TearDownSuite() {
@@ -49,6 +59,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				LastName:  "Doe",
 				Email:     "john.doe@example.com",
 				Password:  "hashedPassword123",
+				Roles:     []string{"ADMIN", "TEACHER"},
 			},
 			useTransaction: false,
 			expectError:    false,
@@ -60,6 +71,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				LastName:  "Smith",
 				Email:     "jane.smith@example.com",
 				Password:  "hashedPassword456",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction: true,
 			expectError:    false,
@@ -71,6 +83,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				LastName:  "User",
 				Email:     "duplicate@example.com",
 				Password:  "hashedPassword789",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction: false,
 			expectError:    true,
@@ -82,8 +95,21 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				LastName:  "Duplicate",
 				Email:     "duplicate2@example.com",
 				Password:  "hashedPassword101",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction: true,
+			expectError:    true,
+		},
+		{
+			name: "Fail to create user with invalid role",
+			createUser: &users.CreateUser{
+				FirstName: "Invalid",
+				LastName:  "Role",
+				Email:     "invalid.role@example.com",
+				Password:  "hashedPassword202",
+				Roles:     []string{"NONEXISTENT_ROLE"},
+			},
+			useTransaction: false,
 			expectError:    true,
 		},
 	}
@@ -93,7 +119,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 			var tx pgx.Tx
 			var err error
 
-			if tc.expectError {
+			if tc.expectError && tc.name != "Fail to create user with invalid role" {
 				_, createErr := suite.usersSvc.CreateUser(suite.Ctx, nil, tc.createUser)
 				suite.Require().Nil(createErr, "Expected no error when creating initial duplicate user")
 			}
@@ -119,6 +145,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				suite.Require().Equal(tc.createUser.LastName, user.LastName)
 				suite.Require().Equal(tc.createUser.Email, user.Email)
 				suite.Require().Nil(user.Password, "Expected password to be nil in returned user object")
+				suite.Require().ElementsMatch(tc.createUser.Roles, user.Roles, "Expected roles to match")
 
 				if tc.useTransaction {
 					commitErr := tx.Commit(suite.Ctx)
@@ -133,6 +160,7 @@ func (suite *UserServiceSuite) TestCreateUser() {
 				suite.Require().Equal(tc.createUser.Email, retrievedUser.Email)
 				suite.Require().NotNil(retrievedUser.Password, "Expected password to be returned in GetUserByEmailWithPass")
 				suite.Require().NotEqual(tc.createUser.Password, *retrievedUser.Password)
+				suite.Require().ElementsMatch(tc.createUser.Roles, retrievedUser.Roles, "Expected retrieved user roles to match")
 			}
 		})
 	}
@@ -154,6 +182,7 @@ func (suite *UserServiceSuite) TestGetUserById() {
 				LastName:  "Doe",
 				Email:     "john.doe@example.com",
 				Password:  "hashedPassword123",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -167,6 +196,7 @@ func (suite *UserServiceSuite) TestGetUserById() {
 				LastName:  "Smith",
 				Email:     "jane.smith@example.com",
 				Password:  "hashedPassword456",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -180,6 +210,7 @@ func (suite *UserServiceSuite) TestGetUserById() {
 				LastName:  "User",
 				Email:     "nonexistent@example.com",
 				Password:  "hashedPassword789",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: false,
@@ -193,6 +224,7 @@ func (suite *UserServiceSuite) TestGetUserById() {
 				LastName:  "NonExistent",
 				Email:     "another.nonexistent@example.com",
 				Password:  "hashedPassword101",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: false,
@@ -240,6 +272,7 @@ func (suite *UserServiceSuite) TestGetUserById() {
 				suite.Require().Equal(savedUsr.Email, foundUsr.Email)
 				suite.Require().Nil(foundUsr.Password, "Expected password to not be returned")
 				suite.Require().Equal(savedUsr.Password, foundUsr.Password)
+				suite.Require().ElementsMatch(savedUsr.Roles, foundUsr.Roles, "Expected roles to match")
 
 				if tc.useTransaction {
 					commitErr := tx.Commit(suite.Ctx)
@@ -266,6 +299,7 @@ func (suite *UserServiceSuite) TestGetUserByEmail() {
 				LastName:  "Johnson",
 				Email:     "alice.johnson@example.com",
 				Password:  "hashedPassword111",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -279,6 +313,7 @@ func (suite *UserServiceSuite) TestGetUserByEmail() {
 				LastName:  "Williams",
 				Email:     "bob.williams@example.com",
 				Password:  "hashedPassword222",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -292,6 +327,7 @@ func (suite *UserServiceSuite) TestGetUserByEmail() {
 				LastName:  "User",
 				Email:     "nonexistent.email@example.com",
 				Password:  "hashedPassword333",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: false,
@@ -305,6 +341,7 @@ func (suite *UserServiceSuite) TestGetUserByEmail() {
 				LastName:  "NonExistent",
 				Email:     "another.nonexistent.email@example.com",
 				Password:  "hashedPassword444",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: false,
@@ -352,6 +389,7 @@ func (suite *UserServiceSuite) TestGetUserByEmail() {
 				suite.Require().Equal(savedUsr.Email, foundUsr.Email)
 				suite.Require().Nil(foundUsr.Password, "Expected password to not be returned")
 				suite.Require().Equal(savedUsr.Password, foundUsr.Password)
+				suite.Require().ElementsMatch(savedUsr.Roles, foundUsr.Roles, "Expected roles to match")
 
 				if tc.useTransaction {
 					commitErr := tx.Commit(suite.Ctx)
@@ -378,6 +416,7 @@ func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
 				LastName:  "Johnson",
 				Email:     "alice.johnson@example.com",
 				Password:  "hashedPassword111",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -391,6 +430,7 @@ func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
 				LastName:  "Williams",
 				Email:     "bob.williams@example.com",
 				Password:  "hashedPassword222",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -404,6 +444,7 @@ func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
 				LastName:  "User",
 				Email:     "nonexistent.email@example.com",
 				Password:  "hashedPassword333",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: false,
@@ -417,6 +458,7 @@ func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
 				LastName:  "NonExistent",
 				Email:     "another.nonexistent.email@example.com",
 				Password:  "hashedPassword444",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: false,
@@ -465,6 +507,7 @@ func (suite *UserServiceSuite) TestGetUserByEmailWithPass() {
 				suite.Require().NotNil(foundUsr.Password, "Expected password to be returned")
 				match := suite.bcryptSvc.PasswordsMatch(*foundUsr.Password, tc.createUser.Password)
 				suite.Require().True(match, "Password should match the hash")
+				suite.Require().ElementsMatch(savedUsr.Roles, foundUsr.Roles, "Expected roles to match")
 
 				if tc.useTransaction {
 					commitErr := tx.Commit(suite.Ctx)
@@ -493,11 +536,13 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "Brown",
 				Email:     "charlie.brown@example.com",
 				Password:  "hashedPassword555",
+				Roles:     []string{"STUDENT"},
 			},
 			updateUser: &users.UpdateUser{
 				FirstName: "Charles",
 				LastName:  "Brownson",
 				Email:     "charles.brownson@example.com",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -512,11 +557,13 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "Prince",
 				Email:     "diana.prince@example.com",
 				Password:  "hashedPassword666",
+				Roles:     []string{"TEACHER"},
 			},
 			updateUser: &users.UpdateUser{
 				FirstName: "Wonder",
 				LastName:  "Woman",
 				Email:     "wonder.woman@example.com",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -531,12 +578,14 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "User",
 				Email:     "ghost.user@example.com",
 				Password:  "hashedPassword777",
+				Roles:     []string{"ADMIN"},
 			},
 			updateUser: &users.UpdateUser{
 				UserId:    99999,
 				FirstName: "Updated",
 				LastName:  "Ghost",
 				Email:     "updated.ghost@example.com",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: false,
@@ -551,12 +600,14 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "User",
 				Email:     "phantom.user@example.com",
 				Password:  "hashedPassword888",
+				Roles:     []string{"TEACHER"},
 			},
 			updateUser: &users.UpdateUser{
 				UserId:    99999,
 				FirstName: "Updated",
 				LastName:  "Phantom",
 				Email:     "updated.phantom@example.com",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: false,
@@ -571,11 +622,13 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "User",
 				Email:     "first.user@example.com",
 				Password:  "hashedPassword999",
+				Roles:     []string{"STUDENT"},
 			},
 			updateUser: &users.UpdateUser{
 				FirstName: "First",
 				LastName:  "User",
 				Email:     "duplicate.target@example.com",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -590,11 +643,13 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				LastName:  "User",
 				Email:     "second.user@example.com",
 				Password:  "hashedPassword000",
+				Roles:     []string{"TEACHER"},
 			},
 			updateUser: &users.UpdateUser{
 				FirstName: "Second",
 				LastName:  "User",
 				Email:     "duplicate.target2@example.com",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -624,6 +679,7 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 					LastName:  "Target",
 					Email:     tc.updateUser.Email,
 					Password:  "hashedPasswordDuplicate",
+					Roles:     []string{"STUDENT"},
 				})
 				suite.Require().Nil(err, "Expected no error when creating duplicate target user")
 				suite.Require().NotNil(duplicateUser, "Expected duplicate target user to not be nil")
@@ -650,6 +706,7 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				suite.Require().Equal(tc.updateUser.LastName, updatedUser.LastName)
 				suite.Require().Equal(tc.updateUser.Email, updatedUser.Email)
 				suite.Require().Nil(updatedUser.Password, "Expected password to be returned")
+				suite.Require().ElementsMatch(tc.updateUser.Roles, updatedUser.Roles, "Expected roles to match after update")
 
 				if tc.useTransaction {
 					commitErr := tx.Commit(suite.Ctx)
@@ -664,6 +721,7 @@ func (suite *UserServiceSuite) TestUpdateUser() {
 				suite.Require().Equal(tc.updateUser.Email, retrievedUser.Email)
 				suite.Require().NotNil(retrievedUser.Password, "Expected password to be returned in GetUserByEmailWithPass")
 				suite.Require().NotEqual(updatedUser.Password, *retrievedUser.Password)
+				suite.Require().ElementsMatch(tc.updateUser.Roles, retrievedUser.Roles, "Expected roles to match in retrieved user")
 			}
 		})
 	}
@@ -686,6 +744,7 @@ func (suite *UserServiceSuite) TestUpdateUserPassword() {
 				LastName:  "Test",
 				Email:     "password.test@example.com",
 				Password:  "oldHashedPassword123",
+				Roles:     []string{"STUDENT"},
 			},
 			newPassword:             "newHashedPassword456",
 			useTransaction:          false,
@@ -700,6 +759,7 @@ func (suite *UserServiceSuite) TestUpdateUserPassword() {
 				LastName:  "TestTwo",
 				Email:     "password.test2@example.com",
 				Password:  "oldHashedPassword789",
+				Roles:     []string{"TEACHER"},
 			},
 			newPassword:             "newHashedPassword012",
 			useTransaction:          true,
@@ -714,6 +774,7 @@ func (suite *UserServiceSuite) TestUpdateUserPassword() {
 				LastName:  "User",
 				Email:     "nonexistent.password@example.com",
 				Password:  "somePassword",
+				Roles:     []string{"ADMIN"},
 			},
 			newPassword:             "newPassword",
 			useTransaction:          false,
@@ -728,6 +789,7 @@ func (suite *UserServiceSuite) TestUpdateUserPassword() {
 				LastName:  "UserTwo",
 				Email:     "nonexistent.password2@example.com",
 				Password:  "somePassword2",
+				Roles:     []string{"STUDENT"},
 			},
 			newPassword:             "newPassword2",
 			useTransaction:          true,
@@ -813,6 +875,7 @@ func (suite *UserServiceSuite) TestDeleteUser() {
 				LastName:  "Test",
 				Email:     "delete.test@example.com",
 				Password:  "hashedPasswordDelete123",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: true,
@@ -826,6 +889,7 @@ func (suite *UserServiceSuite) TestDeleteUser() {
 				LastName:  "TestTwo",
 				Email:     "delete.test2@example.com",
 				Password:  "hashedPasswordDelete456",
+				Roles:     []string{"TEACHER"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: true,
@@ -839,6 +903,7 @@ func (suite *UserServiceSuite) TestDeleteUser() {
 				LastName:  "Delete",
 				Email:     "nonexistent.delete@example.com",
 				Password:  "somePassword",
+				Roles:     []string{"ADMIN"},
 			},
 			useTransaction:          false,
 			shouldCreateInitialUser: false,
@@ -852,6 +917,7 @@ func (suite *UserServiceSuite) TestDeleteUser() {
 				LastName:  "DeleteTwo",
 				Email:     "nonexistent.delete2@example.com",
 				Password:  "somePassword2",
+				Roles:     []string{"STUDENT"},
 			},
 			useTransaction:          true,
 			shouldCreateInitialUser: false,
@@ -925,6 +991,7 @@ func (suite *UserServiceSuite) TestGetUsers() {
 					LastName:  "User",
 					Email:     "single.user@example.com",
 					Password:  "hashedPassword001",
+					Roles:     []string{"STUDENT"},
 				},
 			},
 			useTransaction: false,
@@ -938,18 +1005,21 @@ func (suite *UserServiceSuite) TestGetUsers() {
 					LastName:  "User",
 					Email:     "first.user@example.com",
 					Password:  "hashedPassword002",
+					Roles:     []string{"ADMIN", "TEACHER"},
 				},
 				{
 					FirstName: "Second",
 					LastName:  "User",
 					Email:     "second.user@example.com",
 					Password:  "hashedPassword003",
+					Roles:     []string{"STUDENT"},
 				},
 				{
 					FirstName: "Third",
 					LastName:  "User",
 					Email:     "third.user@example.com",
 					Password:  "hashedPassword004",
+					Roles:     []string{"TEACHER"},
 				},
 			},
 			useTransaction: false,
@@ -969,6 +1039,7 @@ func (suite *UserServiceSuite) TestGetUsers() {
 					LastName:  "UserTx",
 					Email:     "single.usertx@example.com",
 					Password:  "hashedPassword005",
+					Roles:     []string{"ADMIN"},
 				},
 			},
 			useTransaction: true,
@@ -982,24 +1053,28 @@ func (suite *UserServiceSuite) TestGetUsers() {
 					LastName:  "User",
 					Email:     "alpha.user@example.com",
 					Password:  "hashedPassword006",
+					Roles:     []string{"STUDENT", "TEACHER"},
 				},
 				{
 					FirstName: "Beta",
 					LastName:  "User",
 					Email:     "beta.user@example.com",
 					Password:  "hashedPassword007",
+					Roles:     []string{"ADMIN"},
 				},
 				{
 					FirstName: "Gamma",
 					LastName:  "User",
 					Email:     "gamma.user@example.com",
 					Password:  "hashedPassword008",
+					Roles:     []string{"TEACHER"},
 				},
 				{
 					FirstName: "Delta",
 					LastName:  "User",
 					Email:     "delta.user@example.com",
 					Password:  "hashedPassword009",
+					Roles:     []string{"STUDENT"},
 				},
 			},
 			useTransaction: true,
@@ -1053,6 +1128,7 @@ func (suite *UserServiceSuite) TestGetUsers() {
 								suite.Require().Equal(createdUser.Email, retrievedUser.Email)
 								suite.Require().Nil(retrievedUser.Password, "Expected password to not be returned")
 								suite.Require().Equal(createdUser.Password, retrievedUser.Password)
+								suite.Require().ElementsMatch(createdUser.Roles, retrievedUser.Roles, "Expected roles to match")
 								break
 							}
 						}
@@ -1066,7 +1142,10 @@ func (suite *UserServiceSuite) TestGetUsers() {
 				}
 			}
 
-			suite.CleanDatabase()
+			_, err = suite.Db.Pool.Exec(suite.Ctx, "DELETE FROM user_roles;")
+			suite.Require().NoError(err)
+			_, err = suite.Db.Pool.Exec(suite.Ctx, "DELETE FROM users;")
+			suite.Require().NoError(err)
 		})
 	}
 }

@@ -37,7 +37,7 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 		{
 			name: "Successfully create role without transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Admin",
+				RoleName: "ADMIN",
 			},
 			useTransaction: false,
 			expectError:    false,
@@ -45,15 +45,23 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 		{
 			name: "Successfully create role with transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Teacher",
+				RoleName: "TEACHER",
 			},
 			useTransaction: true,
 			expectError:    false,
 		},
 		{
+			name: "Successfully create role with underscores and numbers",
+			createRole: &roles.CreateRole{
+				RoleName: "STUDENT_LEVEL_1",
+			},
+			useTransaction: false,
+			expectError:    false,
+		},
+		{
 			name: "Fail to create role with duplicate name without transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Duplicate",
+				RoleName: "DUPLICATE_ROLE",
 			},
 			useTransaction: false,
 			expectError:    true,
@@ -61,7 +69,7 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 		{
 			name: "Fail to create role with duplicate name with transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Duplicate2",
+				RoleName: "DUPLICATE_ROLE_2",
 			},
 			useTransaction: true,
 			expectError:    true,
@@ -74,6 +82,30 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 			useTransaction: false,
 			expectError:    true,
 		},
+		{
+			name: "Fail to create role with lowercase name",
+			createRole: &roles.CreateRole{
+				RoleName: "lowercase",
+			},
+			useTransaction: false,
+			expectError:    true,
+		},
+		{
+			name: "Fail to create role with mixed case name",
+			createRole: &roles.CreateRole{
+				RoleName: "MixedCase",
+			},
+			useTransaction: false,
+			expectError:    true,
+		},
+		{
+			name: "Fail to create role with special characters",
+			createRole: &roles.CreateRole{
+				RoleName: "INVALID-ROLE",
+			},
+			useTransaction: false,
+			expectError:    true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -81,7 +113,8 @@ func (suite *RoleRepositorySuite) TestCreateRole() {
 			var tx pgx.Tx
 			var err error
 
-			if tc.expectError && tc.createRole.RoleName != "" {
+			if tc.expectError && (tc.name == "Fail to create role with duplicate name without transaction" ||
+				tc.name == "Fail to create role with duplicate name with transaction") {
 				_, createErr := suite.rolesRepo.CreateRole(suite.Ctx, nil, tc.createRole)
 				suite.Require().Nil(createErr, "Expected no error when creating initial duplicate role")
 			}
@@ -132,7 +165,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		{
 			name: "Successfully get role without transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Student",
+				RoleName: "STUDENT",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: true,
@@ -143,7 +176,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		{
 			name: "Successfully get role with transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "Parent",
+				RoleName: "PARENT",
 			},
 			useTransaction:          true,
 			shouldCreateInitialRole: true,
@@ -154,7 +187,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		{
 			name: "Fail to get role without transaction - role does not exist",
 			createRole: &roles.CreateRole{
-				RoleName: "NonExistent",
+				RoleName: "NONEXISTENT",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: false,
@@ -165,7 +198,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		{
 			name: "Fail to get role with transaction - role does not exist",
 			createRole: &roles.CreateRole{
-				RoleName: "AnotherNonExistent",
+				RoleName: "ANOTHER_NONEXISTENT",
 			},
 			useTransaction:          true,
 			shouldCreateInitialRole: false,
@@ -176,7 +209,7 @@ func (suite *RoleRepositorySuite) TestGetRoleById() {
 		{
 			name: "Fail to get role with invalid ID (negative)",
 			createRole: &roles.CreateRole{
-				RoleName: "Invalid",
+				RoleName: "INVALID",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: false,
@@ -244,9 +277,9 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 		{
 			name: "Successfully get all roles without transaction",
 			rolesToCreate: []*roles.CreateRole{
-				{RoleName: "Admin"},
-				{RoleName: "Teacher"},
-				{RoleName: "Student"},
+				{RoleName: "ADMIN"},
+				{RoleName: "TEACHER"},
+				{RoleName: "STUDENT"},
 			},
 			useTransaction:    false,
 			expectEmptyResult: false,
@@ -255,8 +288,8 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 		{
 			name: "Successfully get all roles with transaction",
 			rolesToCreate: []*roles.CreateRole{
-				{RoleName: "Manager"},
-				{RoleName: "Staff"},
+				{RoleName: "MANAGER"},
+				{RoleName: "STAFF"},
 			},
 			useTransaction:    true,
 			expectEmptyResult: false,
@@ -279,7 +312,7 @@ func (suite *RoleRepositorySuite) TestGetRoles() {
 		{
 			name: "Successfully get single role without transaction",
 			rolesToCreate: []*roles.CreateRole{
-				{RoleName: "SingleRole"},
+				{RoleName: "SINGLE_ROLE"},
 			},
 			useTransaction:    false,
 			expectEmptyResult: false,
@@ -353,73 +386,73 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 		useTransaction          bool
 		shouldCreateInitialRole bool
 		useNonExistentId        bool
-		useInvalidId            bool
+		invalidIdValue          int32
 		expectError             bool
 	}{
 		{
 			name: "Successfully delete role without transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "ToDelete1",
+				RoleName: "TO_DELETE_1",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: true,
 			useNonExistentId:        false,
-			useInvalidId:            false,
+			invalidIdValue:          0,
 			expectError:             false,
 		},
 		{
 			name: "Successfully delete role with transaction",
 			createRole: &roles.CreateRole{
-				RoleName: "ToDelete2",
+				RoleName: "TO_DELETE_2",
 			},
 			useTransaction:          true,
 			shouldCreateInitialRole: true,
 			useNonExistentId:        false,
-			useInvalidId:            false,
+			invalidIdValue:          0,
 			expectError:             false,
 		},
 		{
 			name: "Fail to delete role without transaction - role does not exist",
 			createRole: &roles.CreateRole{
-				RoleName: "NonExistent",
+				RoleName: "NONEXISTENT",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: false,
 			useNonExistentId:        true,
-			useInvalidId:            false,
+			invalidIdValue:          0,
 			expectError:             true,
 		},
 		{
 			name: "Fail to delete role with transaction - role does not exist",
 			createRole: &roles.CreateRole{
-				RoleName: "AnotherNonExistent",
+				RoleName: "ANOTHER_NONEXISTENT",
 			},
 			useTransaction:          true,
 			shouldCreateInitialRole: false,
 			useNonExistentId:        true,
-			useInvalidId:            false,
+			invalidIdValue:          0,
 			expectError:             true,
 		},
 		{
 			name: "Fail to delete role with invalid ID (negative)",
 			createRole: &roles.CreateRole{
-				RoleName: "Invalid",
+				RoleName: "INVALID",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: false,
 			useNonExistentId:        false,
-			useInvalidId:            true,
+			invalidIdValue:          -1,
 			expectError:             true,
 		},
 		{
 			name: "Fail to delete role with invalid ID (zero)",
 			createRole: &roles.CreateRole{
-				RoleName: "Invalid2",
+				RoleName: "INVALID_2",
 			},
 			useTransaction:          false,
 			shouldCreateInitialRole: false,
 			useNonExistentId:        false,
-			useInvalidId:            true,
+			invalidIdValue:          0,
 			expectError:             true,
 		},
 	}
@@ -438,12 +471,8 @@ func (suite *RoleRepositorySuite) TestDeleteRole() {
 				roleIdToDelete = savedRole.RoleId
 			} else if tc.useNonExistentId {
 				roleIdToDelete = 99999
-			} else if tc.useInvalidId {
-				if tc.createRole.RoleName == "Invalid" {
-					roleIdToDelete = -1
-				} else {
-					roleIdToDelete = 0
-				}
+			} else {
+				roleIdToDelete = tc.invalidIdValue
 			}
 
 			if tc.useTransaction {

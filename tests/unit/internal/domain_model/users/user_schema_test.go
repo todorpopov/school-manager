@@ -21,6 +21,18 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
 				Password:  "password123",
+				Roles:     []string{"ADMIN", "TEACHER"},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid create user with single role",
+			input: &users.CreateUser{
+				FirstName: "John",
+				LastName:  "Smith",
+				Email:     "john.smith@example.com",
+				Password:  "password123",
+				Roles:     []string{"STUDENT"},
 			},
 			expectError: false,
 		},
@@ -31,6 +43,7 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
 				Password:  "password123",
+				Roles:     []string{"ADMIN"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -44,6 +57,7 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "",
 				Email:     "jane.doe@example.com",
 				Password:  "password123",
+				Roles:     []string{"TEACHER"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -57,6 +71,7 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "Doe",
 				Email:     "invalid-email",
 				Password:  "password123",
+				Roles:     []string{"STUDENT"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -70,6 +85,7 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
 				Password:  "",
+				Roles:     []string{"ADMIN"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -83,10 +99,69 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
 				Password:  "short",
+				Roles:     []string{"TEACHER"},
 			},
 			expectError: true,
 			expectData: map[string]string{
 				"password": "Password length must be between 8 and 60",
+			},
+		},
+		{
+			name: "missing roles",
+			input: &users.CreateUser{
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Password:  "password123",
+				Roles:     []string{},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles": "At least one role is required to create a user",
+			},
+		},
+		{
+			name: "invalid role name - lowercase",
+			input: &users.CreateUser{
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Password:  "password123",
+				Roles:     []string{"admin"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[admin]": "Role name can only contain uppercase letters, numbers, and underscores",
+			},
+		},
+		{
+			name: "invalid role name - special characters",
+			input: &users.CreateUser{
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Password:  "password123",
+				Roles:     []string{"ADMIN-ROLE"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[ADMIN-ROLE]": "Role name can only contain uppercase letters, numbers, and underscores",
+			},
+		},
+		{
+			name: "multiple invalid role names",
+			input: &users.CreateUser{
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Password:  "password123",
+				Roles:     []string{"admin", "Teacher", "STUDENT-1"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[admin]":     "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[Teacher]":   "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[STUDENT-1]": "Role name can only contain uppercase letters, numbers, and underscores",
 			},
 		},
 		{
@@ -96,6 +171,7 @@ func TestValidateCreateUser(t *testing.T) {
 				LastName:  "",
 				Email:     "bad",
 				Password:  "",
+				Roles:     []string{},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -103,6 +179,26 @@ func TestValidateCreateUser(t *testing.T) {
 				"last_name":  "Field cannot be empty",
 				"email":      "Invalid email format",
 				"password":   "Password cannot be empty",
+				"roles":      "At least one role is required to create a user",
+			},
+		},
+		{
+			name: "multiple validation errors including invalid roles",
+			input: &users.CreateUser{
+				FirstName: "",
+				LastName:  "",
+				Email:     "bad",
+				Password:  "short",
+				Roles:     []string{"invalid-role", "lowercase"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"first_name":          "Field cannot be empty",
+				"last_name":           "Field cannot be empty",
+				"email":               "Invalid email format",
+				"password":            "Password length must be between 8 and 60",
+				"roles[invalid-role]": "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[lowercase]":    "Role name can only contain uppercase letters, numbers, and underscores",
 			},
 		},
 	}
@@ -136,6 +232,18 @@ func TestValidateUpdateUser(t *testing.T) {
 				FirstName: "Jane",
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
+				Roles:     []string{"ADMIN", "TEACHER"},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid update user with single role",
+			input: &users.UpdateUser{
+				UserId:    1,
+				FirstName: "John",
+				LastName:  "Smith",
+				Email:     "john.smith@example.com",
+				Roles:     []string{"STUDENT"},
 			},
 			expectError: false,
 		},
@@ -146,6 +254,7 @@ func TestValidateUpdateUser(t *testing.T) {
 				FirstName: "Jane",
 				LastName:  "Doe",
 				Email:     "jane.doe@example.com",
+				Roles:     []string{"ADMIN"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -159,6 +268,7 @@ func TestValidateUpdateUser(t *testing.T) {
 				FirstName: "",
 				LastName:  "",
 				Email:     "invalid-email",
+				Roles:     []string{"TEACHER"},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -168,12 +278,71 @@ func TestValidateUpdateUser(t *testing.T) {
 			},
 		},
 		{
+			name: "missing roles",
+			input: &users.UpdateUser{
+				UserId:    1,
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Roles:     []string{},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles": "At least one role is required to update a user",
+			},
+		},
+		{
+			name: "invalid role name - lowercase",
+			input: &users.UpdateUser{
+				UserId:    1,
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Roles:     []string{"student"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[student]": "Role name can only contain uppercase letters, numbers, and underscores",
+			},
+		},
+		{
+			name: "invalid role name - mixed case",
+			input: &users.UpdateUser{
+				UserId:    1,
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Roles:     []string{"Admin", "Teacher"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[Admin]":   "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[Teacher]": "Role name can only contain uppercase letters, numbers, and underscores",
+			},
+		},
+		{
+			name: "invalid role name - special characters",
+			input: &users.UpdateUser{
+				UserId:    1,
+				FirstName: "Jane",
+				LastName:  "Doe",
+				Email:     "jane.doe@example.com",
+				Roles:     []string{"ROLE-ADMIN", "ROLE@TEACHER"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"roles[ROLE-ADMIN]":   "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[ROLE@TEACHER]": "Role name can only contain uppercase letters, numbers, and underscores",
+			},
+		},
+		{
 			name: "multiple validation errors",
 			input: &users.UpdateUser{
 				UserId:    -1,
 				FirstName: "",
 				LastName:  "",
 				Email:     "bad",
+				Roles:     []string{},
 			},
 			expectError: true,
 			expectData: map[string]string{
@@ -181,6 +350,26 @@ func TestValidateUpdateUser(t *testing.T) {
 				"first_name": "Field cannot be empty",
 				"last_name":  "Field cannot be empty",
 				"email":      "Invalid email format",
+				"roles":      "At least one role is required to update a user",
+			},
+		},
+		{
+			name: "multiple validation errors including invalid roles",
+			input: &users.UpdateUser{
+				UserId:    0,
+				FirstName: "",
+				LastName:  "",
+				Email:     "bad",
+				Roles:     []string{"admin", "Teacher-1"},
+			},
+			expectError: true,
+			expectData: map[string]string{
+				"user_id":          "Invalid id",
+				"first_name":       "Field cannot be empty",
+				"last_name":        "Field cannot be empty",
+				"email":            "Invalid email format",
+				"roles[admin]":     "Role name can only contain uppercase letters, numbers, and underscores",
+				"roles[Teacher-1]": "Role name can only contain uppercase letters, numbers, and underscores",
 			},
 		},
 	}

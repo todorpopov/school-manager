@@ -114,7 +114,7 @@ func ValidateUpdateUser(updateUser *UpdateUser) *exceptions.AppError {
 	}
 
 	if len(updateUser.Roles) == 0 {
-		messages["roles"] = "At least one role is required to create a user"
+		messages["roles"] = "At least one role is required to update a user"
 	}
 
 	for _, role := range updateUser.Roles {
