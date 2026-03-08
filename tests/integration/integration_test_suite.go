@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/todorpopov/school-manager/configs"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
@@ -16,11 +15,10 @@ func newLogger() *zap.Logger {
 
 type TestSuite struct {
 	suite.Suite
-	Env         *configs.Config
-	Logger      *zap.Logger
-	DbContainer testcontainers.Container
-	Db          *persistence.Database
-	Ctx         context.Context
+	Env    *configs.Config
+	Logger *zap.Logger
+	Db     *persistence.Database
+	Ctx    context.Context
 }
 
 func (suite *TestSuite) SetupSuite() {
