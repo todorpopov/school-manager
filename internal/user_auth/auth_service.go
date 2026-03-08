@@ -40,6 +40,7 @@ func (as *AuthService) RegisterUser(ctx context.Context, registerRequest *Regist
 		LastName:  registerRequest.LastName,
 		Email:     registerRequest.Email,
 		Password:  registerRequest.Password,
+		Roles:     registerRequest.Roles,
 	}
 	user, err := as.userSvc.CreateUser(ctx, nil, createUser)
 	if err != nil {

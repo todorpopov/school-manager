@@ -17,6 +17,7 @@ func RegisterUserHandler(hw *writer.HttpWriter, authSvc user_auth.IAuthService, 
 			return
 		}
 
+		request.Roles = []string{"USER"}
 		authResp, err := authSvc.RegisterUser(r.Context(), &request)
 		if err != nil {
 			logger.Error("Failed to register user", zap.Error(err))
