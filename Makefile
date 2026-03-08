@@ -2,18 +2,18 @@
 
 test:
 	@echo "Running all tests..."
-	@go test -v ./tests/...
+	@go test -v -p 1 -parallel 1 ./tests/...
 
 coverage:
 	@echo "Running all tests with coverage..."
 	@mkdir -p ./tests/coverage
-	@go test -v -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/...
+	@go test -v -p 1 -parallel 1 -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/...
 	@go tool cover -func=./tests/coverage/coverage.out
 
 coverage-html:
 	@echo "Generating HTML coverage report..."
 	@mkdir -p ./tests/coverage
-	@go test -v -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/...
+	@go test -v -p 1 -parallel 1 -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/...
 	@go tool cover -html=./tests/coverage/coverage.out -o ./tests/coverage/coverage.html
 	@echo "Coverage report generated: ./tests/coverage/coverage.html"
 
@@ -25,7 +25,7 @@ coverage-report: coverage-html
 coverage-full:
 	@echo "Running tests and analyzing complete codebase coverage..."
 	@mkdir -p ./tests/coverage
-	@go test -v -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/... > /dev/null 2>&1 || true
+	@go test -v -p 1 -parallel 1 -coverprofile=./tests/coverage/coverage.out -covermode=atomic -coverpkg=./... ./tests/... > /dev/null 2>&1 || true
 	@echo ""
 	@echo "=== Files with Test Coverage ==="
 	@go tool cover -func=./tests/coverage/coverage.out

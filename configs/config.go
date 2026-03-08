@@ -30,10 +30,10 @@ func ParseConfig() *Config {
 	}
 }
 
-func NewTestConfig(dbUrl string) *Config {
+func NewTestConfig() *Config {
 	return &Config{
 		ApiPort:                 "8080",
-		DBUrl:                   dbUrl,
+		DBUrl:                   "postgres://admin:admin@100.109.199.26:30001/school_manager",
 		DBMinConnections:        5,
 		DBMaxConnections:        10,
 		DBMaxConnectionLifetime: 5 * time.Minute,
