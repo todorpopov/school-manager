@@ -1,120 +1,71 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { ResourceManager } from './components/ResourceManager'
+import type { FieldConfig } from './components/ResourceManager'
+
+interface User {
+  [key: string]: unknown
+  user_id: number
+  first_name: string
+  last_name: string
+  email: string
+  roles: string[]
+}
+
+const ROLE_OPTIONS = [
+  { label: 'Admin', value: 'ADMIN' },
+  { label: 'Director', value: 'DIRECTOR' },
+  { label: 'Teacher', value: 'TEACHER' },
+  { label: 'Parent', value: 'PARENT' },
+  { label: 'Student', value: 'STUDENT' },
+]
+
+const USER_FIELDS: FieldConfig<User>[] = [
+  { key: 'user_id', label: 'ID', type: 'number', hideInForm: true },
+  { key: 'first_name', label: 'First name', type: 'text', required: true, placeholder: 'Ivan' },
+  { key: 'last_name', label: 'Last name', type: 'text', required: true, placeholder: 'Petrov' },
+  { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'ivan@school.bg' },
+  { key: 'roles', label: 'Roles', type: 'multiselect', required: true, options: ROLE_OPTIONS },
+]
+
+const MOCK_USERS: User[] = [
+  { user_id: 1, first_name: 'Maria', last_name: 'Georgieva', email: 'maria@school.bg', roles: ['TEACHER'] },
+  { user_id: 2, first_name: 'Georgi', last_name: 'Stoyanov', email: 'georgi@school.bg', roles: ['DIRECTOR'] },
+]
+
+let nextId = 3
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [users, setUsers] = useState<User[]>(MOCK_USERS)
+
+  const handleCreate = async (values: Partial<User>) => {
+    const newUser: User = { ...(values as User), user_id: nextId++ }
+    setUsers((prev) => [...prev, newUser])
+  }
+
+  const handleUpdate = async (id: User[keyof User], values: Partial<User>) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.user_id === id ? { ...u, ...values } : u))
+    )
+  }
+
+  const handleDelete = async (id: User[keyof User]) => {
+    setUsers((prev) => prev.filter((u) => u.user_id !== id))
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-10">
+      <div className="max-w-4xl mx-auto px-4">
+        <ResourceManager<User>
+        title="Users"
+        data={users}
+        fields={USER_FIELDS}
+        idKey="user_id"
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
+      </div>
+    </div>
   )
 }
 
