@@ -5,12 +5,9 @@ import (
 	"net/http"
 
 	"github.com/todorpopov/school-manager/configs"
-	"github.com/todorpopov/school-manager/internal/domain_model/roles"
-	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/internal/server/routes"
 	"github.com/todorpopov/school-manager/internal/server/writer"
-	"github.com/todorpopov/school-manager/internal/user_auth"
 	"go.uber.org/zap"
 )
 
@@ -21,14 +18,15 @@ type Server interface {
 }
 
 type HttpServer struct {
-	env    *configs.Config
-	mux    *http.ServeMux
-	writer *writer.HttpWriter
-	logger *zap.Logger
-	server *http.Server
+	env        *configs.Config
+	mux        *http.ServeMux
+	writer     *writer.HttpWriter
+	logger     *zap.Logger
+	server     *http.Server
+	serverDeps *Dependencies
 }
 
-func NewHttpServer(env *configs.Config, logger *zap.Logger) *HttpServer {
+func NewHttpServer(env *configs.Config, logger *zap.Logger, deps *Dependencies) *HttpServer {
 	errWriter := exceptions.NewErrorWriter()
 	return &HttpServer{
 		env,
@@ -36,10 +34,12 @@ func NewHttpServer(env *configs.Config, logger *zap.Logger) *HttpServer {
 		writer.NewHttpWriter(errWriter),
 		logger,
 		nil,
+		deps,
 	}
 }
 
 func (s *HttpServer) Start() error {
+	s.registerRoutes()
 	s.logger.Info("Starting HTTP server on port: " + s.env.ApiPort)
 	srvAddr := ":" + s.env.ApiPort
 	s.server = &http.Server{
@@ -56,13 +56,10 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *HttpServer) RegisterRoutes(
-	usrSvc users.IUserService,
-	authSvc user_auth.IAuthService,
-	roleSvc roles.IRoleService,
-) {
+func (s *HttpServer) registerRoutes() {
 	routes.RegisterGeneralRoutes(s.mux, s.writer, s.logger)
-	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, usrSvc, authSvc)
-	routes.RegisterAuthRoutes(s.mux, s.writer, s.logger, authSvc)
-	routes.RegisterRoleRoutes(s.mux, s.writer, s.logger, roleSvc, authSvc)
+	routes.RegisterUserRoutes(s.mux, s.writer, s.logger, s.serverDeps.UserSvc, s.serverDeps.AuthSvc)
+	routes.RegisterAuthRoutes(s.mux, s.writer, s.logger, s.serverDeps.AuthSvc)
+	routes.RegisterRoleRoutes(s.mux, s.writer, s.logger, s.serverDeps.RoleRepo, s.serverDeps.AuthSvc)
+	routes.RegisterDirectorRoutes(s.mux, s.writer, s.logger, s.serverDeps.DirectorSvc, s.serverDeps.AuthSvc)
 }
