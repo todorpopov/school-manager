@@ -19,7 +19,7 @@ func CreateDirectorHandler(hw *writer.HttpWriter, directorSvc directors.IDirecto
 			return
 		}
 
-		director, err := directorSvc.CreateDirector(r.Context(), &request)
+		director, err := directorSvc.CreateDirector(r.Context(), nil, &request)
 		if err != nil {
 			logger.Error("Failed to create director", zap.Error(err))
 			hw.WriteError(w, err)
@@ -40,7 +40,7 @@ func GetDirectorByIdHandler(hw *writer.HttpWriter, directorSvc directors.IDirect
 			return
 		}
 
-		director, err1 := directorSvc.GetDirectorById(r.Context(), int32(directorId))
+		director, err1 := directorSvc.GetDirectorById(r.Context(), nil, int32(directorId))
 		if err1 != nil {
 			logger.Error("Failed to get director by ID", zap.Int("director_id", directorId), zap.Error(err1))
 			hw.WriteError(w, err1)
@@ -60,7 +60,7 @@ func GetDirectorByUserIdHandler(hw *writer.HttpWriter, directorSvc directors.IDi
 			return
 		}
 
-		director, err1 := directorSvc.GetDirectorByUserId(r.Context(), int32(userId))
+		director, err1 := directorSvc.GetDirectorByUserId(r.Context(), nil, int32(userId))
 		if err1 != nil {
 			logger.Error("Failed to get director by user ID", zap.Int("user_id", userId), zap.Error(err1))
 			hw.WriteError(w, err1)
@@ -74,7 +74,7 @@ func GetDirectorByUserIdHandler(hw *writer.HttpWriter, directorSvc directors.IDi
 
 func GetDirectorsHandler(hw *writer.HttpWriter, directorSvc directors.IDirectorService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		allDirectors, err := directorSvc.GetDirectors(r.Context())
+		allDirectors, err := directorSvc.GetDirectors(r.Context(), nil)
 		if err != nil {
 			logger.Error("Failed to get directors", zap.Error(err))
 			hw.WriteError(w, err)
@@ -107,7 +107,7 @@ func UpdateDirectorHandler(hw *writer.HttpWriter, directorSvc directors.IDirecto
 			Email:      request.Email,
 		}
 
-		director, updateErr := directorSvc.UpdateDirector(r.Context(), updateDirector)
+		director, updateErr := directorSvc.UpdateDirector(r.Context(), nil, updateDirector)
 		if updateErr != nil {
 			logger.Error("Failed to update director", zap.Error(updateErr))
 			hw.WriteError(w, updateErr)
@@ -127,7 +127,7 @@ func DeleteDirectorHandler(hw *writer.HttpWriter, directorSvc directors.IDirecto
 			return
 		}
 
-		delErr := directorSvc.DeleteDirector(r.Context(), int32(directorId))
+		delErr := directorSvc.DeleteDirector(r.Context(), nil, int32(directorId))
 		if delErr != nil {
 			logger.Error("Failed to delete director", zap.Int("director_id", directorId), zap.Error(delErr))
 			hw.WriteError(w, delErr)
@@ -137,4 +137,3 @@ func DeleteDirectorHandler(hw *writer.HttpWriter, directorSvc directors.IDirecto
 		hw.WriteResponse(w, http.StatusOK, internal.NewApiResponse(false, "Director deleted successfully", nil))
 	}
 }
-

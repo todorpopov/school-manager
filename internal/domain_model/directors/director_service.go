@@ -3,6 +3,7 @@ package directors
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/exceptions"
@@ -10,12 +11,12 @@ import (
 )
 
 type IDirectorService interface {
-	CreateDirector(ctx context.Context, createDirector *CreateDirector) (*Director, *exceptions.AppError)
-	GetDirectorById(ctx context.Context, directorId int32) (*Director, *exceptions.AppError)
-	GetDirectorByUserId(ctx context.Context, userId int32) (*Director, *exceptions.AppError)
-	GetDirectors(ctx context.Context) ([]Director, *exceptions.AppError)
-	UpdateDirector(ctx context.Context, updateDirector *UpdateDirector) (*Director, *exceptions.AppError)
-	DeleteDirector(ctx context.Context, directorId int32) *exceptions.AppError
+	CreateDirector(ctx context.Context, tx pgx.Tx, createDirector *CreateDirector) (*Director, *exceptions.AppError)
+	GetDirectorById(ctx context.Context, tx pgx.Tx, directorId int32) (*Director, *exceptions.AppError)
+	GetDirectorByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError)
+	GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError)
+	UpdateDirector(ctx context.Context, tx pgx.Tx, updateDirector *UpdateDirector) (*Director, *exceptions.AppError)
+	DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError
 }
 
 type DirectorService struct {
@@ -28,23 +29,29 @@ func NewDirectorService(directorRepo IDirectorRepository, userSvc users.IUserSer
 	return &DirectorService{directorRepo, userSvc, txFactory}
 }
 
-func (ds *DirectorService) CreateDirector(ctx context.Context, createDirector *CreateDirector) (*Director, *exceptions.AppError) {
+func (ds *DirectorService) CreateDirector(ctx context.Context, tx pgx.Tx, createDirector *CreateDirector) (*Director, *exceptions.AppError) {
 	validationErr := ValidateCreateDirector(createDirector)
 	if validationErr != nil {
 		return nil, validationErr
 	}
 
-	tx, txErr := ds.txFactory.BeginTransaction(ctx)
-	if txErr != nil {
-		return nil, txErr
-	}
-
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
 	committed := false
-	defer func() {
-		if !committed {
-			_ = ds.txFactory.CommitOrRollback(ctx, tx, txErr)
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ds.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
 		}
-	}()
+		defer func() {
+			if !committed {
+				_ = ds.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
 
 	createUser := &users.CreateUser{
 		FirstName: createDirector.FirstName,
@@ -54,24 +61,26 @@ func (ds *DirectorService) CreateDirector(ctx context.Context, createDirector *C
 		Roles:     []string{"DIRECTOR"},
 	}
 
-	user, userErr := ds.userSvc.CreateUser(ctx, tx, createUser)
+	user, userErr := ds.userSvc.CreateUser(ctx, txToUse, createUser)
 	if userErr != nil {
 		txErr = userErr
 		return nil, userErr
 	}
 
-	directorRecord, directorErr := ds.directorRepo.CreateDirector(ctx, tx, user.UserId)
+	directorRecord, directorErr := ds.directorRepo.CreateDirector(ctx, txToUse, user.UserId)
 	if directorErr != nil {
 		txErr = directorErr
 		return nil, directorErr
 	}
 
-	commitErr := ds.txFactory.CommitOrRollback(ctx, tx, nil)
-	if commitErr != nil {
-		txErr = commitErr
-		return nil, commitErr
+	if tx == nil {
+		commitErr := ds.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
 	}
-	committed = true
 
 	director := &Director{
 		DirectorId: directorRecord.DirectorId,
@@ -85,17 +94,17 @@ func (ds *DirectorService) CreateDirector(ctx context.Context, createDirector *C
 	return director, nil
 }
 
-func (ds *DirectorService) GetDirectorById(ctx context.Context, directorId int32) (*Director, *exceptions.AppError) {
+func (ds *DirectorService) GetDirectorById(ctx context.Context, tx pgx.Tx, directorId int32) (*Director, *exceptions.AppError) {
 	if msg := domain_model.ValidateId(directorId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid director ID", map[string]string{"director_id": msg})
 	}
 
-	director, err := ds.directorRepo.GetDirectorById(ctx, nil, directorId)
+	director, err := ds.directorRepo.GetDirectorById(ctx, tx, directorId)
 	if err != nil {
 		return nil, err
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId})
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
 	if rolesErr != nil {
 		return nil, rolesErr
 	}
@@ -104,17 +113,17 @@ func (ds *DirectorService) GetDirectorById(ctx context.Context, directorId int32
 	return director, nil
 }
 
-func (ds *DirectorService) GetDirectorByUserId(ctx context.Context, userId int32) (*Director, *exceptions.AppError) {
+func (ds *DirectorService) GetDirectorByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError) {
 	if msg := domain_model.ValidateId(userId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 
-	director, err := ds.directorRepo.GetDirectorByUserId(ctx, nil, userId)
+	director, err := ds.directorRepo.GetDirectorByUserId(ctx, tx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId})
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
 	if rolesErr != nil {
 		return nil, rolesErr
 	}
@@ -123,8 +132,8 @@ func (ds *DirectorService) GetDirectorByUserId(ctx context.Context, userId int32
 	return director, nil
 }
 
-func (ds *DirectorService) GetDirectors(ctx context.Context) ([]Director, *exceptions.AppError) {
-	directors, err := ds.directorRepo.GetDirectors(ctx, nil)
+func (ds *DirectorService) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError) {
+	directors, err := ds.directorRepo.GetDirectors(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +144,7 @@ func (ds *DirectorService) GetDirectors(ctx context.Context) ([]Director, *excep
 			userIds[i] = directors[i].UserId
 		}
 
-		rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, userIds)
+		rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, userIds) // todo: add tx
 		if rolesErr != nil {
 			return nil, rolesErr
 		}
@@ -148,30 +157,36 @@ func (ds *DirectorService) GetDirectors(ctx context.Context) ([]Director, *excep
 	return directors, nil
 }
 
-func (ds *DirectorService) UpdateDirector(ctx context.Context, updateDirector *UpdateDirector) (*Director, *exceptions.AppError) {
+func (ds *DirectorService) UpdateDirector(ctx context.Context, tx pgx.Tx, updateDirector *UpdateDirector) (*Director, *exceptions.AppError) {
 	if validationErr := ValidateUpdateDirector(updateDirector); validationErr != nil {
 		return nil, validationErr
 	}
 
-	tx, txErr := ds.txFactory.BeginTransaction(ctx)
-	if txErr != nil {
-		return nil, txErr
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ds.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ds.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
 	}
 
-	committed := false
-	defer func() {
-		if !committed {
-			_ = ds.txFactory.CommitOrRollback(ctx, tx, txErr)
-		}
-	}()
-
-	director, getErr := ds.directorRepo.GetDirectorById(ctx, tx, updateDirector.DirectorId)
+	director, getErr := ds.directorRepo.GetDirectorById(ctx, txToUse, updateDirector.DirectorId)
 	if getErr != nil {
 		txErr = getErr
 		return nil, getErr
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId})
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
 	if rolesErr != nil {
 		txErr = rolesErr
 		return nil, rolesErr
@@ -186,18 +201,20 @@ func (ds *DirectorService) UpdateDirector(ctx context.Context, updateDirector *U
 		Roles:     currentRoles,
 	}
 
-	user, userErr := ds.userSvc.UpdateUser(ctx, tx, updateUser)
+	user, userErr := ds.userSvc.UpdateUser(ctx, txToUse, updateUser)
 	if userErr != nil {
 		txErr = userErr
 		return nil, userErr
 	}
 
-	commitErr := ds.txFactory.CommitOrRollback(ctx, tx, nil)
-	if commitErr != nil {
-		txErr = commitErr
-		return nil, commitErr
+	if tx == nil {
+		commitErr := ds.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
 	}
-	committed = true
 
 	updatedDirector := &Director{
 		DirectorId: director.DirectorId,
@@ -211,9 +228,9 @@ func (ds *DirectorService) UpdateDirector(ctx context.Context, updateDirector *U
 	return updatedDirector, nil
 }
 
-func (ds *DirectorService) DeleteDirector(ctx context.Context, directorId int32) *exceptions.AppError {
+func (ds *DirectorService) DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError {
 	if msg := domain_model.ValidateId(directorId); msg != "" {
 		return exceptions.NewValidationError("Invalid director ID", map[string]string{"director_id": msg})
 	}
-	return ds.directorRepo.DeleteDirector(ctx, nil, directorId)
+	return ds.directorRepo.DeleteDirector(ctx, tx, directorId)
 }

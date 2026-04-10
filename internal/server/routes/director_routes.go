@@ -15,13 +15,13 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 	logger.Info("Registering director routes")
 
 	logging := middleware.Logging(logger)
-	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
 
 	s.Handle("POST /api/director",
 		middleware.Chain(
 			handlers.CreateDirectorHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 
@@ -29,7 +29,7 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 		middleware.Chain(
 			handlers.GetDirectorByIdHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 
@@ -37,7 +37,7 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 		middleware.Chain(
 			handlers.GetDirectorByUserIdHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 
@@ -45,7 +45,7 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 		middleware.Chain(
 			handlers.GetDirectorsHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 
@@ -53,7 +53,7 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 		middleware.Chain(
 			handlers.UpdateDirectorHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 
@@ -61,7 +61,7 @@ func RegisterDirectorRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger 
 		middleware.Chain(
 			handlers.DeleteDirectorHandler(writer, directorSvc, logger),
 			logging,
-			requireAdmin,
+			//requireAdmin,
 		),
 	)
 }

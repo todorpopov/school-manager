@@ -29,7 +29,7 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	txFactory := persistence.NewTransactionFactory(db)
 
 	usrRepo := users.NewUserRepository(db, logger)
-	usrSvc := users.NewUserService(bcryptSvc, usrRepo)
+	usrSvc := users.NewUserService(bcryptSvc, usrRepo, txFactory)
 
 	sessionRepo := sessions.NewSessionRepository(db, env.SessionExpiration, logger)
 	sessionSvc := sessions.NewSessionService(sessionRepo)
