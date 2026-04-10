@@ -21,7 +21,7 @@ type IUserRepository interface {
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
-	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError)
 	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 	deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
@@ -133,7 +133,7 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{userId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, []int32{userId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -165,7 +165,7 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, tx pgx.Tx, email s
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{user.UserId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, []int32{user.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -217,7 +217,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 			userIds[i] = users[i].UserId
 		}
 
-		rolesMap, rolesErr := ur.GetUsersRoles(ctx, userIds)
+		rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, userIds)
 		if rolesErr != nil {
 			ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 			return nil, rolesErr
@@ -254,7 +254,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 		}()
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{updateUser.UserId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, txToUse, []int32{updateUser.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		txErr = rolesErr
@@ -426,8 +426,7 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 	return nil
 }
 
-// Add transaction
-func (ur *UserRepository) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+func (ur *UserRepository) GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError) {
 	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
 		return nil, exceptions.NewValidationError("Invalid IDs", messages)
 	}
@@ -440,7 +439,17 @@ func (ur *UserRepository) GetUsersRoles(ctx context.Context, userIds []int32) (m
 		ORDER BY ur.user_id, r.role_name;
 	`
 
-	rows, err := ur.db.Pool.Query(ctx, sql, userIds)
+	var rows pgx.Rows
+	var err error
+
+	if tx != nil {
+		ur.logger.Debug("Getting users roles in transaction")
+		rows, err = tx.Query(ctx, sql, userIds)
+	} else {
+		ur.logger.Debug("Getting users roles without transaction")
+		rows, err = ur.db.Pool.Query(ctx, sql, userIds)
+	}
+
 	if err != nil {
 		ur.logger.Error("Failed to get users roles", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)

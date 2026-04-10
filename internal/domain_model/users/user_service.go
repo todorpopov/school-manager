@@ -20,7 +20,7 @@ type IUserService interface {
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
-	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError)
 	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 }
 
@@ -190,11 +190,11 @@ func (us *UserService) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) 
 	return us.usrRepo.DeleteUser(ctx, tx, userId)
 }
 
-func (us *UserService) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+func (us *UserService) GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError) {
 	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
 		return nil, exceptions.NewValidationError("Invalid IDs", messages)
 	}
-	return us.usrRepo.GetUsersRoles(ctx, userIds)
+	return us.usrRepo.GetUsersRoles(ctx, tx, userIds)
 }
 
 func (us *UserService) AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError) {

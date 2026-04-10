@@ -93,7 +93,7 @@ func (as *AuthService) IsRequestAuthorized(ctx context.Context, request *AuthReq
 		return false, err
 	}
 
-	rolesMap, err := as.userSvc.GetUsersRoles(ctx, []int32{session.UserId})
+	rolesMap, err := as.userSvc.GetUsersRoles(ctx, nil, []int32{session.UserId})
 	if err != nil {
 		return false, err
 	}

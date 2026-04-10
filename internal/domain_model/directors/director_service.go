@@ -104,7 +104,7 @@ func (ds *DirectorService) GetDirectorById(ctx context.Context, tx pgx.Tx, direc
 		return nil, err
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, tx, []int32{director.UserId})
 	if rolesErr != nil {
 		return nil, rolesErr
 	}
@@ -123,7 +123,7 @@ func (ds *DirectorService) GetDirectorByUserId(ctx context.Context, tx pgx.Tx, u
 		return nil, err
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, tx, []int32{director.UserId})
 	if rolesErr != nil {
 		return nil, rolesErr
 	}
@@ -144,7 +144,7 @@ func (ds *DirectorService) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Direc
 			userIds[i] = directors[i].UserId
 		}
 
-		rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, userIds) // todo: add tx
+		rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, tx, userIds)
 		if rolesErr != nil {
 			return nil, rolesErr
 		}
@@ -186,7 +186,7 @@ func (ds *DirectorService) UpdateDirector(ctx context.Context, tx pgx.Tx, update
 		return nil, getErr
 	}
 
-	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, []int32{director.UserId}) // todo: add tx
+	rolesMap, rolesErr := ds.userSvc.GetUsersRoles(ctx, txToUse, []int32{director.UserId})
 	if rolesErr != nil {
 		txErr = rolesErr
 		return nil, rolesErr
