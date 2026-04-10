@@ -54,7 +54,6 @@ func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *Cr
 	createUserCpy := *createUser
 	createUserCpy.Password = hash
 
-	// Use provided transaction or create new one
 	var txToUse pgx.Tx
 	var txErr *exceptions.AppError
 	committed := false
@@ -79,7 +78,6 @@ func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *Cr
 		return nil, err
 	}
 
-	// Commit if we created the transaction
 	if tx == nil {
 		commitErr := us.txFactory.CommitOrRollback(ctx, txToUse, nil)
 		if commitErr != nil {
@@ -131,7 +129,6 @@ func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *Up
 		return nil, validationErr
 	}
 
-	// Use provided transaction or create new one
 	var txToUse pgx.Tx
 	var txErr *exceptions.AppError
 	committed := false
@@ -156,7 +153,6 @@ func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *Up
 		return nil, err
 	}
 
-	// Commit if we created the transaction
 	if tx == nil {
 		commitErr := us.txFactory.CommitOrRollback(ctx, txToUse, nil)
 		if commitErr != nil {
