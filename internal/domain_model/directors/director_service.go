@@ -232,5 +232,51 @@ func (ds *DirectorService) DeleteDirector(ctx context.Context, tx pgx.Tx, direct
 	if msg := domain_model.ValidateId(directorId); msg != "" {
 		return exceptions.NewValidationError("Invalid director ID", map[string]string{"director_id": msg})
 	}
-	return ds.directorRepo.DeleteDirector(ctx, tx, directorId)
+
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ds.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ds.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	director, getErr := ds.directorRepo.GetDirectorById(ctx, txToUse, directorId)
+	if getErr != nil {
+		txErr = getErr
+		return getErr
+	}
+
+	deleteErr := ds.directorRepo.DeleteDirector(ctx, txToUse, directorId)
+	if deleteErr != nil {
+		txErr = deleteErr
+		return deleteErr
+	}
+
+	userDeleteErr := ds.userSvc.DeleteUser(ctx, txToUse, director.UserId)
+	if userDeleteErr != nil {
+		txErr = userDeleteErr
+		return userDeleteErr
+	}
+
+	if tx == nil {
+		commitErr := ds.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return commitErr
+		}
+		committed = true
+	}
+
+	return nil
 }

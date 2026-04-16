@@ -232,6 +232,51 @@ func (ts *TeacherService) DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherI
 	if msg := domain_model.ValidateId(teacherId); msg != "" {
 		return exceptions.NewValidationError("Invalid teacher ID", map[string]string{"teacher_id": msg})
 	}
-	return ts.teacherRepo.DeleteTeacher(ctx, tx, teacherId)
-}
 
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ts.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ts.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	teacher, getErr := ts.teacherRepo.GetTeacherById(ctx, txToUse, teacherId)
+	if getErr != nil {
+		txErr = getErr
+		return getErr
+	}
+
+	deleteErr := ts.teacherRepo.DeleteTeacher(ctx, txToUse, teacherId)
+	if deleteErr != nil {
+		txErr = deleteErr
+		return deleteErr
+	}
+
+	userDeleteErr := ts.userSvc.DeleteUser(ctx, txToUse, teacher.UserId)
+	if userDeleteErr != nil {
+		txErr = userDeleteErr
+		return userDeleteErr
+	}
+
+	if tx == nil {
+		commitErr := ts.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return commitErr
+		}
+		committed = true
+	}
+
+	return nil
+}

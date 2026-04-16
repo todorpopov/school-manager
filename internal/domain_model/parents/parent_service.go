@@ -232,6 +232,51 @@ func (ps *ParentService) DeleteParent(ctx context.Context, tx pgx.Tx, parentId i
 	if msg := domain_model.ValidateId(parentId); msg != "" {
 		return exceptions.NewValidationError("Invalid parent ID", map[string]string{"parent_id": msg})
 	}
-	return ps.parentRepo.DeleteParent(ctx, tx, parentId)
-}
 
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ps.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ps.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	parent, getErr := ps.parentRepo.GetParentById(ctx, txToUse, parentId)
+	if getErr != nil {
+		txErr = getErr
+		return getErr
+	}
+
+	deleteErr := ps.parentRepo.DeleteParent(ctx, txToUse, parentId)
+	if deleteErr != nil {
+		txErr = deleteErr
+		return deleteErr
+	}
+
+	userDeleteErr := ps.userSvc.DeleteUser(ctx, txToUse, parent.UserId)
+	if userDeleteErr != nil {
+		txErr = userDeleteErr
+		return userDeleteErr
+	}
+
+	if tx == nil {
+		commitErr := ps.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return commitErr
+		}
+		committed = true
+	}
+
+	return nil
+}
