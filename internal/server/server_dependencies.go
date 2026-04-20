@@ -6,6 +6,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/domain_model/classes"
 	"github.com/todorpopov/school-manager/internal/domain_model/curricula"
 	"github.com/todorpopov/school-manager/internal/domain_model/directors"
+	"github.com/todorpopov/school-manager/internal/domain_model/grades"
 	"github.com/todorpopov/school-manager/internal/domain_model/parents"
 	"github.com/todorpopov/school-manager/internal/domain_model/roles"
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
@@ -42,6 +43,8 @@ type Dependencies struct {
 	SubjectSvc     subjects.ISubjectService
 	CurriculumRepo curricula.ICurriculumRepository
 	CurriculumSvc  curricula.ICurriculumService
+	GradeRepo      grades.IGradeRepository
+	GradeSvc       grades.IGradeService
 	AuthSvc        user_auth.IAuthService
 }
 
@@ -82,6 +85,9 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	curriculumRepo := curricula.NewCurriculumRepository(db, logger)
 	curriculumSvc := curricula.NewCurriculumService(curriculumRepo)
 
+	gradeRepo := grades.NewGradeRepository(db, logger)
+	gradeSvc := grades.NewGradeService(gradeRepo)
+
 	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc)
 	return &Dependencies{
 		UserRepo:       usrRepo,
@@ -106,6 +112,8 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 		SubjectSvc:     subjectSvc,
 		CurriculumRepo: curriculumRepo,
 		CurriculumSvc:  curriculumSvc,
+		GradeRepo:      gradeRepo,
+		GradeSvc:       gradeSvc,
 		AuthSvc:        authSvc,
 	}
 }

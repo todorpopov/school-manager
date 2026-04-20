@@ -3,6 +3,7 @@ package domain_model
 import (
 	"fmt"
 	"regexp"
+	"time"
 )
 
 func ValidateString(s *string, minLen int, maxLen int, required bool) string {
@@ -97,4 +98,20 @@ func ValidateRoleNames(roleNames []string, assertAtLeastOne bool) map[string]str
 		}
 	}
 	return messages
+}
+
+func ValidateIsoDate(date *string, required bool) string {
+	if date == nil || *date == "" {
+		if required == true {
+			return "Date cannot be empty"
+		}
+		return ""
+	}
+
+	_, err := time.Parse("2006-01-02", *date)
+	if err != nil {
+		return "Invalid date format, expected YYYY-MM-DD"
+	}
+
+	return ""
 }
