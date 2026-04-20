@@ -4,6 +4,7 @@ import (
 	"github.com/todorpopov/school-manager/configs"
 	"github.com/todorpopov/school-manager/internal"
 	"github.com/todorpopov/school-manager/internal/domain_model/classes"
+	"github.com/todorpopov/school-manager/internal/domain_model/curricula"
 	"github.com/todorpopov/school-manager/internal/domain_model/directors"
 	"github.com/todorpopov/school-manager/internal/domain_model/parents"
 	"github.com/todorpopov/school-manager/internal/domain_model/roles"
@@ -19,27 +20,29 @@ import (
 )
 
 type Dependencies struct {
-	UserRepo     users.IUserRepository
-	UserSvc      users.IUserService
-	SessionRepo  sessions.ISessionRepository
-	SessionSvc   sessions.ISessionService
-	RoleRepo     roles.IRoleRepository
-	RoleSvc      roles.IRoleService
-	DirectorRepo directors.IDirectorRepository
-	DirectorSvc  directors.IDirectorService
-	TeacherRepo  teachers.ITeacherRepository
-	TeacherSvc   teachers.ITeacherService
-	ParentRepo   parents.IParentRepository
-	ParentSvc    parents.IParentService
-	ClassRepo    classes.IClassRepository
-	ClassSvc     classes.IClassService
-	StudentRepo  students.IStudentRepository
-	StudentSvc   students.IStudentService
-	TermRepo     terms.ITermRepository
-	TermSvc      terms.ITermService
-	SubjectRepo  subjects.ISubjectRepository
-	SubjectSvc   subjects.ISubjectService
-	AuthSvc      user_auth.IAuthService
+	UserRepo       users.IUserRepository
+	UserSvc        users.IUserService
+	SessionRepo    sessions.ISessionRepository
+	SessionSvc     sessions.ISessionService
+	RoleRepo       roles.IRoleRepository
+	RoleSvc        roles.IRoleService
+	DirectorRepo   directors.IDirectorRepository
+	DirectorSvc    directors.IDirectorService
+	TeacherRepo    teachers.ITeacherRepository
+	TeacherSvc     teachers.ITeacherService
+	ParentRepo     parents.IParentRepository
+	ParentSvc      parents.IParentService
+	ClassRepo      classes.IClassRepository
+	ClassSvc       classes.IClassService
+	StudentRepo    students.IStudentRepository
+	StudentSvc     students.IStudentService
+	TermRepo       terms.ITermRepository
+	TermSvc        terms.ITermService
+	SubjectRepo    subjects.ISubjectRepository
+	SubjectSvc     subjects.ISubjectService
+	CurriculumRepo curricula.ICurriculumRepository
+	CurriculumSvc  curricula.ICurriculumService
+	AuthSvc        user_auth.IAuthService
 }
 
 func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.Logger) *Dependencies {
@@ -76,28 +79,33 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	subjectRepo := subjects.NewSubjectRepository(db, logger)
 	subjectSvc := subjects.NewSubjectService(subjectRepo)
 
+	curriculumRepo := curricula.NewCurriculumRepository(db, logger)
+	curriculumSvc := curricula.NewCurriculumService(curriculumRepo)
+
 	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc)
 	return &Dependencies{
-		UserRepo:     usrRepo,
-		UserSvc:      usrSvc,
-		SessionRepo:  sessionRepo,
-		SessionSvc:   sessionSvc,
-		RoleRepo:     roleRepo,
-		RoleSvc:      roleSvc,
-		DirectorRepo: directorRepo,
-		DirectorSvc:  directorSvc,
-		TeacherRepo:  teacherRepo,
-		TeacherSvc:   teacherSvc,
-		ParentRepo:   parentRepo,
-		ParentSvc:    parentSvc,
-		ClassRepo:    classRepo,
-		ClassSvc:     classSvc,
-		StudentRepo:  studentRepo,
-		StudentSvc:   studentSvc,
-		TermRepo:     termRepo,
-		TermSvc:      termSvc,
-		SubjectRepo:  subjectRepo,
-		SubjectSvc:   subjectSvc,
-		AuthSvc:      authSvc,
+		UserRepo:       usrRepo,
+		UserSvc:        usrSvc,
+		SessionRepo:    sessionRepo,
+		SessionSvc:     sessionSvc,
+		RoleRepo:       roleRepo,
+		RoleSvc:        roleSvc,
+		DirectorRepo:   directorRepo,
+		DirectorSvc:    directorSvc,
+		TeacherRepo:    teacherRepo,
+		TeacherSvc:     teacherSvc,
+		ParentRepo:     parentRepo,
+		ParentSvc:      parentSvc,
+		ClassRepo:      classRepo,
+		ClassSvc:       classSvc,
+		StudentRepo:    studentRepo,
+		StudentSvc:     studentSvc,
+		TermRepo:       termRepo,
+		TermSvc:        termSvc,
+		SubjectRepo:    subjectRepo,
+		SubjectSvc:     subjectSvc,
+		CurriculumRepo: curriculumRepo,
+		CurriculumSvc:  curriculumSvc,
+		AuthSvc:        authSvc,
 	}
 }
