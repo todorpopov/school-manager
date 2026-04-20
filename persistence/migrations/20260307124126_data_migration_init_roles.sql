@@ -9,5 +9,5 @@ INSERT INTO roles (role_name) VALUES ('PARENT');
 
 -- +goose Down
 -- +goose StatementBegin
-DELETE FROM roles WHERE role_name IN ('ADMIN', 'DIRECTOR', 'TEACHER', 'STUDENT', 'PARENT');
+DELETE FROM roles;
 -- +goose StatementEnd

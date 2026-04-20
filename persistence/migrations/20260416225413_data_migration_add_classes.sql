@@ -75,5 +75,5 @@ INSERT INTO classes (grade_level, class_name) VALUES (12, 'F');
 
 -- +goose Down
 -- +goose StatementBegin
-DELETE FROM classes WHERE class_name IN ('A', 'B', 'C', 'D', 'F');
+DELETE FROM classes;
 -- +goose StatementEnd

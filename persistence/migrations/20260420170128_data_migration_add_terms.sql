@@ -8,5 +8,5 @@ INSERT INTO terms (name) VALUES ('Spring 2027');
 
 -- +goose Down
 -- +goose StatementBegin
-DELETE FROM terms WHERE name IN ('Fall 2026', 'Spring 2026', 'Fall 2027', 'Spring 2027');
+DELETE FROM terms;
 -- +goose StatementEnd
