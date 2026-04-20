@@ -10,6 +10,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
 	"github.com/todorpopov/school-manager/internal/domain_model/students"
 	"github.com/todorpopov/school-manager/internal/domain_model/teachers"
+	"github.com/todorpopov/school-manager/internal/domain_model/terms"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/user_auth"
 	"github.com/todorpopov/school-manager/persistence"
@@ -33,6 +34,8 @@ type Dependencies struct {
 	ClassSvc     classes.IClassService
 	StudentRepo  students.IStudentRepository
 	StudentSvc   students.IStudentService
+	TermRepo     terms.ITermRepository
+	TermSvc      terms.ITermService
 	AuthSvc      user_auth.IAuthService
 }
 
@@ -64,6 +67,9 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	studentRepo := students.NewStudentRepository(db, logger)
 	studentSvc := students.NewStudentService(studentRepo, usrSvc, txFactory)
 
+	termRepo := terms.NewTermRepository(db, logger)
+	termSvc := terms.NewTermService(termRepo)
+
 	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc)
 	return &Dependencies{
 		UserRepo:     usrRepo,
@@ -82,6 +88,8 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 		ClassSvc:     classSvc,
 		StudentRepo:  studentRepo,
 		StudentSvc:   studentSvc,
+		TermRepo:     termRepo,
+		TermSvc:      termSvc,
 		AuthSvc:      authSvc,
 	}
 }
