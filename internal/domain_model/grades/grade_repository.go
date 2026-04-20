@@ -147,8 +147,8 @@ func (gr *GradeRepository) GetGradeById(ctx context.Context, tx pgx.Tx, gradeId 
 	curriculum.Subject = &subject
 	curriculum.Term = &term
 	curriculum.TeacherId = teacherId
-	grade.Student = &student
-	grade.Curriculum = &curriculum
+	grade.Student = student
+	grade.Curriculum = curriculum
 
 	return &grade, nil
 }
@@ -234,8 +234,8 @@ func (gr *GradeRepository) GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *
 		curriculum.Subject = &subject
 		curriculum.Term = &term
 		curriculum.TeacherId = teacherId
-		grade.Student = &student
-		grade.Curriculum = &curriculum
+		grade.Student = student
+		grade.Curriculum = curriculum
 
 		grades = append(grades, grade)
 	}

@@ -10,11 +10,11 @@ import (
 )
 
 type Grade struct {
-	GradeId    int32                 `json:"grade_id"`
-	Student    *students.Student     `json:"student"`
-	Curriculum *curricula.Curriculum `json:"curriculum"`
-	GradeValue float32               `json:"grade_value"`
-	GradeDate  time.Time             `json:"grade_date"`
+	GradeId    int32                `json:"grade_id"`
+	Student    students.Student     `json:"student"`
+	Curriculum curricula.Curriculum `json:"curriculum"`
+	GradeValue float32              `json:"grade_value"`
+	GradeDate  time.Time            `json:"grade_date"`
 }
 
 type CreateGrade struct {
