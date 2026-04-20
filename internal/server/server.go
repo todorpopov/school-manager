@@ -67,4 +67,5 @@ func (s *HttpServer) registerRoutes() {
 	routes.RegisterClassRoutes(s.mux, s.writer, s.logger, s.serverDeps.ClassSvc, s.serverDeps.AuthSvc)
 	routes.RegisterStudentRoutes(s.mux, s.writer, s.logger, s.serverDeps.StudentSvc, s.serverDeps.AuthSvc)
 	routes.RegisterTermRoutes(s.mux, s.writer, s.logger, s.serverDeps.TermSvc, s.serverDeps.AuthSvc)
+	routes.RegisterSubjectRoutes(s.mux, s.writer, s.logger, s.serverDeps.SubjectSvc, s.serverDeps.AuthSvc)
 }
