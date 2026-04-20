@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model/teachers"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
@@ -16,17 +17,32 @@ type ICurriculumService interface {
 }
 
 type CurriculumService struct {
-	curriculumRepo ICurriculumRepository
+	curriculumRepo     ICurriculumRepository
+	teacherSubjectRepo teachers.ITeacherSubjectRepository
 }
 
-func NewCurriculumService(curriculumRepo ICurriculumRepository) *CurriculumService {
-	return &CurriculumService{curriculumRepo}
+func NewCurriculumService(curriculumRepo ICurriculumRepository, teacherSubjectRepo teachers.ITeacherSubjectRepository) *CurriculumService {
+	return &CurriculumService{curriculumRepo, teacherSubjectRepo}
 }
 
 func (cs *CurriculumService) CreateCurriculum(ctx context.Context, tx pgx.Tx, createCurriculum *CreateCurriculum) (*Curriculum, *exceptions.AppError) {
 	validationErr := ValidateCreateCurriculum(createCurriculum)
 	if validationErr != nil {
 		return nil, validationErr
+	}
+
+	canTeach, err := cs.teacherSubjectRepo.CanTeacherTeachSubject(ctx, tx, createCurriculum.TeacherId, createCurriculum.SubjectId)
+	if err != nil {
+		return nil, err
+	}
+
+	if !canTeach {
+		return nil, exceptions.NewValidationError(
+			"Teacher is not qualified to teach this subject",
+			map[string]string{
+				"teacher_id": "Teacher must be linked to the subject before being assigned to teach it",
+			},
+		)
 	}
 
 	return cs.curriculumRepo.CreateCurriculum(ctx, tx, createCurriculum)
@@ -51,4 +67,3 @@ func (cs *CurriculumService) DeleteCurriculum(ctx context.Context, tx pgx.Tx, cu
 
 	return cs.curriculumRepo.DeleteCurriculum(ctx, tx, curriculumId)
 }
-

@@ -22,35 +22,37 @@ import (
 )
 
 type Dependencies struct {
-	UserRepo          users.IUserRepository
-	UserSvc           users.IUserService
-	SessionRepo       sessions.ISessionRepository
-	SessionSvc        sessions.ISessionService
-	RoleRepo          roles.IRoleRepository
-	RoleSvc           roles.IRoleService
-	DirectorRepo      directors.IDirectorRepository
-	DirectorSvc       directors.IDirectorService
-	TeacherRepo       teachers.ITeacherRepository
-	TeacherSvc        teachers.ITeacherService
-	ParentRepo        parents.IParentRepository
-	ParentSvc         parents.IParentService
-	ClassRepo         classes.IClassRepository
-	ClassSvc          classes.IClassService
-	StudentRepo       students.IStudentRepository
-	StudentSvc        students.IStudentService
-	StudentParentRepo students.IStudentParentRepository
-	StudentParentSvc  students.IStudentParentService
-	TermRepo          terms.ITermRepository
-	TermSvc           terms.ITermService
-	SubjectRepo       subjects.ISubjectRepository
-	SubjectSvc        subjects.ISubjectService
-	CurriculumRepo    curricula.ICurriculumRepository
-	CurriculumSvc     curricula.ICurriculumService
-	GradeRepo         grades.IGradeRepository
-	GradeSvc          grades.IGradeService
-	AbsenceRepo       absences.IAbsenceRepository
-	AbsenceSvc        absences.IAbsenceService
-	AuthSvc           user_auth.IAuthService
+	UserRepo           users.IUserRepository
+	UserSvc            users.IUserService
+	SessionRepo        sessions.ISessionRepository
+	SessionSvc         sessions.ISessionService
+	RoleRepo           roles.IRoleRepository
+	RoleSvc            roles.IRoleService
+	DirectorRepo       directors.IDirectorRepository
+	DirectorSvc        directors.IDirectorService
+	TeacherRepo        teachers.ITeacherRepository
+	TeacherSvc         teachers.ITeacherService
+	TeacherSubjectRepo teachers.ITeacherSubjectRepository
+	TeacherSubjectSvc  teachers.ITeacherSubjectService
+	ParentRepo         parents.IParentRepository
+	ParentSvc          parents.IParentService
+	ClassRepo          classes.IClassRepository
+	ClassSvc           classes.IClassService
+	StudentRepo        students.IStudentRepository
+	StudentSvc         students.IStudentService
+	StudentParentRepo  students.IStudentParentRepository
+	StudentParentSvc   students.IStudentParentService
+	TermRepo           terms.ITermRepository
+	TermSvc            terms.ITermService
+	SubjectRepo        subjects.ISubjectRepository
+	SubjectSvc         subjects.ISubjectService
+	CurriculumRepo     curricula.ICurriculumRepository
+	CurriculumSvc      curricula.ICurriculumService
+	GradeRepo          grades.IGradeRepository
+	GradeSvc           grades.IGradeService
+	AbsenceRepo        absences.IAbsenceRepository
+	AbsenceSvc         absences.IAbsenceService
+	AuthSvc            user_auth.IAuthService
 }
 
 func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.Logger) *Dependencies {
@@ -72,6 +74,9 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	teacherRepo := teachers.NewTeacherRepository(db, logger)
 	teacherSvc := teachers.NewTeacherService(teacherRepo, usrSvc, txFactory)
 
+	teacherSubjectRepo := teachers.NewTeacherSubjectRepository(db, logger)
+	teacherSubjectSvc := teachers.NewTeacherSubjectService(teacherSubjectRepo)
+
 	parentRepo := parents.NewParentRepository(db, logger)
 	parentSvc := parents.NewParentService(parentRepo, usrSvc, txFactory)
 
@@ -91,7 +96,7 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	subjectSvc := subjects.NewSubjectService(subjectRepo)
 
 	curriculumRepo := curricula.NewCurriculumRepository(db, logger)
-	curriculumSvc := curricula.NewCurriculumService(curriculumRepo)
+	curriculumSvc := curricula.NewCurriculumService(curriculumRepo, teacherSubjectRepo)
 
 	gradeRepo := grades.NewGradeRepository(db, logger)
 	gradeSvc := grades.NewGradeService(gradeRepo)
@@ -101,34 +106,36 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 
 	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc)
 	return &Dependencies{
-		UserRepo:          usrRepo,
-		UserSvc:           usrSvc,
-		SessionRepo:       sessionRepo,
-		SessionSvc:        sessionSvc,
-		RoleRepo:          roleRepo,
-		RoleSvc:           roleSvc,
-		DirectorRepo:      directorRepo,
-		DirectorSvc:       directorSvc,
-		TeacherRepo:       teacherRepo,
-		TeacherSvc:        teacherSvc,
-		ParentRepo:        parentRepo,
-		ParentSvc:         parentSvc,
-		ClassRepo:         classRepo,
-		ClassSvc:          classSvc,
-		StudentRepo:       studentRepo,
-		StudentSvc:        studentSvc,
-		StudentParentRepo: studentParentRepo,
-		StudentParentSvc:  studentParentSvc,
-		TermRepo:          termRepo,
-		TermSvc:           termSvc,
-		SubjectRepo:       subjectRepo,
-		SubjectSvc:        subjectSvc,
-		CurriculumRepo:    curriculumRepo,
-		CurriculumSvc:     curriculumSvc,
-		GradeRepo:         gradeRepo,
-		GradeSvc:          gradeSvc,
-		AbsenceRepo:       absenceRepo,
-		AbsenceSvc:        absenceSvc,
-		AuthSvc:           authSvc,
+		UserRepo:           usrRepo,
+		UserSvc:            usrSvc,
+		SessionRepo:        sessionRepo,
+		SessionSvc:         sessionSvc,
+		RoleRepo:           roleRepo,
+		RoleSvc:            roleSvc,
+		DirectorRepo:       directorRepo,
+		DirectorSvc:        directorSvc,
+		TeacherRepo:        teacherRepo,
+		TeacherSvc:         teacherSvc,
+		TeacherSubjectRepo: teacherSubjectRepo,
+		TeacherSubjectSvc:  teacherSubjectSvc,
+		ParentRepo:         parentRepo,
+		ParentSvc:          parentSvc,
+		ClassRepo:          classRepo,
+		ClassSvc:           classSvc,
+		StudentRepo:        studentRepo,
+		StudentSvc:         studentSvc,
+		StudentParentRepo:  studentParentRepo,
+		StudentParentSvc:   studentParentSvc,
+		TermRepo:           termRepo,
+		TermSvc:            termSvc,
+		SubjectRepo:        subjectRepo,
+		SubjectSvc:         subjectSvc,
+		CurriculumRepo:     curriculumRepo,
+		CurriculumSvc:      curriculumSvc,
+		GradeRepo:          gradeRepo,
+		GradeSvc:           gradeSvc,
+		AbsenceRepo:        absenceRepo,
+		AbsenceSvc:         absenceSvc,
+		AuthSvc:            authSvc,
 	}
 }
