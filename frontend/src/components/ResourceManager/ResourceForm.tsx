@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import type { FieldConfig, SelectOption } from './types'
+import { Field } from '../Field'
+import { inputCls } from '../../styles/formStyles'
 
 interface ResourceFormProps<T extends { [key: string]: unknown }> {
   fields: FieldConfig<T>[]
@@ -83,14 +85,9 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
     }
   }
 
-  const inputBase = 'w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400'
-  const inputNormal = 'border-slate-300 dark:border-slate-600'
-  const inputError  = 'border-red-400 focus:ring-red-400'
-
   const renderField = (field: FieldConfig<T>) => {
     const value = values[field.key]
     const hasError = !!errors[field.key]
-    const borderClass = hasError ? inputError : inputNormal
 
     switch (field.type) {
       case 'textarea':
@@ -101,7 +98,7 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
             onChange={(e) => handleChange(field.key, e.target.value)}
             placeholder={field.placeholder}
             rows={3}
-            className={`${inputBase} ${borderClass} resize-y min-h-[72px]`}
+            className={`${inputCls(hasError)} resize-y min-h-[72px]`}
           />
         )
       case 'select':
@@ -110,7 +107,7 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
             id={String(field.key)}
             value={(value as string | number) ?? ''}
             onChange={(e) => handleChange(field.key, e.target.value)}
-            className={`${inputBase} ${borderClass}`}
+            className={inputCls(hasError)}
           >
             <option value="">— Select —</option>
             {field.options?.map((opt: SelectOption) => (
@@ -120,7 +117,7 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
         )
       case 'multiselect':
         return (
-          <div className={`flex flex-wrap gap-2 p-2 border rounded-md bg-white dark:bg-slate-900 ${hasError ? 'border-red-400' : 'border-slate-300 dark:border-slate-600'}`}>
+          <div className={`flex flex-wrap gap-2 p-2 border rounded-md bg-white dark:bg-slate-900 justify-center ${hasError ? 'border-red-400' : 'border-slate-300 dark:border-slate-600'}`}>
             {field.options?.map((opt: SelectOption) => {
               const checked = ((value as string[]) ?? []).includes(String(opt.value))
               return (
@@ -145,7 +142,7 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
             value={(value as string | number) ?? ''}
             onChange={(e) => handleChange(field.key, e.target.value)}
             placeholder={field.placeholder}
-            className={`${inputBase} ${borderClass}`}
+            className={inputCls(hasError)}
           />
         )
     }
@@ -156,16 +153,14 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 p-5">
       {visibleFields.map((field) => (
-        <div key={String(field.key)} className="flex flex-col gap-1">
-          <label htmlFor={String(field.key)} className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            {field.label}
-            {field.required && <span className="text-red-500 ml-0.5">*</span>}
-          </label>
+        <Field
+          key={String(field.key)}
+          label={field.label}
+          error={errors[field.key] as string | undefined}
+          required={field.required}
+        >
           {renderField(field)}
-          {errors[field.key] && (
-            <span className="text-xs text-red-500">{errors[field.key]}</span>
-          )}
-        </div>
+        </Field>
       ))}
 
       <div className="flex justify-end gap-2 pt-2">

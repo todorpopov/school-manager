@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 interface ConfirmDeleteProps {
   label: string
@@ -6,7 +6,7 @@ interface ConfirmDeleteProps {
   onCancel: () => void
 }
 
-export function ConfirmDelete({ label, onConfirm, onCancel }: ConfirmDeleteProps) {
+export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({ label, onConfirm, onCancel }) => {
   const [deleting, setDeleting] = useState(false)
 
   const handle = async () => {
