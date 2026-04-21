@@ -11,6 +11,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
 	"github.com/todorpopov/school-manager/internal/user_auth"
+	"github.com/todorpopov/school-manager/persistence"
 	"github.com/todorpopov/school-manager/tests/integration"
 )
 
@@ -18,6 +19,7 @@ type AuthServiceSuite struct {
 	integration.TestSuite
 	authSvc   user_auth.IAuthService
 	bcryptSvc internal.IBCryptService
+	txFactory persistence.ITransactionFactory
 	usersSvc  users.IUserService
 	rolesRepo roles.IRoleRepository
 }
@@ -25,8 +27,9 @@ type AuthServiceSuite struct {
 func (suite *AuthServiceSuite) SetupSuite() {
 	suite.TestSuite.SetupSuite()
 	suite.bcryptSvc = internal.NewBCryptService()
+	suite.txFactory = persistence.NewTransactionFactory(suite.Db)
 	usersRepo := users.NewUserRepository(suite.Db, suite.Logger)
-	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo)
+	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo, suite.txFactory)
 	sessionsRepo := sessions.NewSessionRepository(suite.Db, suite.Env.SessionExpiration, suite.Logger)
 	sessionsSvc := sessions.NewSessionService(sessionsRepo)
 	suite.authSvc = user_auth.NewAuthService(suite.bcryptSvc, suite.usersSvc, sessionsSvc)

@@ -13,11 +13,21 @@ import (
 	"github.com/todorpopov/school-manager/internal/server"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+func newLogger() (*zap.Logger, error) {
+	timeEncoder := func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("2006-01-02 15:04:05"))
+	}
+	cfg := zap.NewDevelopmentConfig()
+	cfg.EncoderConfig.EncodeTime = timeEncoder
+	return cfg.Build()
+}
 
 func main() {
 	env := configs.ParseConfig()
-	logger, err := NewLogger()
+	logger, err := newLogger()
 	if err != nil {
 		panic(err)
 	}
@@ -33,14 +43,8 @@ func main() {
 		}
 	}()
 
-	deps := NewAppDeps(env, db, logger)
-
-	httpServer := server.NewHttpServer(env, logger)
-	httpServer.RegisterRoutes(
-		deps.UserSvc,
-		deps.AuthSvc,
-		deps.RoleSvc,
-	)
+	deps := server.NewDependencies(env, db, logger)
+	httpServer := server.NewHttpServer(env, logger, deps)
 
 	go func() {
 		err = httpServer.Start()

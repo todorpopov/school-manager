@@ -21,18 +21,20 @@ type IUserRepository interface {
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
-	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError)
 	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 	deleteUserRoles(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 }
 
 type UserRepository struct {
-	db     *persistence.Database
-	logger *zap.Logger
+	db        *persistence.Database
+	logger    *zap.Logger
+	txFactory persistence.ITransactionFactory
 }
 
 func NewUserRepository(db *persistence.Database, logger *zap.Logger) *UserRepository {
-	return &UserRepository{db, logger}
+	txFactory := persistence.NewTransactionFactory(db)
+	return &UserRepository{db, logger, txFactory}
 }
 
 func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
@@ -44,6 +46,24 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 	if _, rolesErr2 := ur.AreRolesValid(ctx, createUser.Roles); rolesErr2 != nil {
 		ur.logger.Error("Failed to validate roles", zap.Error(rolesErr2))
 		return nil, rolesErr2
+	}
+
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ur.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ur.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
 	}
 
 	sql := `
@@ -67,19 +87,23 @@ func (ur *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, createUser 
 	var user User
 	var err error
 
-	if tx != nil {
-		ur.logger.Debug("Creating user in transaction")
-		err = tx.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password, createUser.Roles).
-			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-	} else {
-		ur.logger.Debug("Creating user without transaction")
-		err = ur.db.Pool.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password, createUser.Roles).
-			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-	}
+	ur.logger.Debug("Creating user", zap.Bool("has_transaction", tx != nil))
+	err = txToUse.QueryRow(ctx, sql, createUser.FirstName, createUser.LastName, createUser.Email, createUser.Password, createUser.Roles).
+		Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 
 	if err != nil {
 		ur.logger.Error("Failed to create user", zap.Error(err))
-		return nil, exceptions.PgErrorToAppError(err)
+		txErr = exceptions.PgErrorToAppError(err)
+		return nil, txErr
+	}
+
+	if tx == nil {
+		commitErr := ur.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
 	}
 
 	user.Roles = createUser.Roles
@@ -109,7 +133,7 @@ func (ur *UserRepository) GetUserById(ctx context.Context, tx pgx.Tx, userId int
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{userId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, []int32{userId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -141,7 +165,7 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, tx pgx.Tx, email s
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{user.UserId})
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, []int32{user.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 		return nil, rolesErr
@@ -193,7 +217,7 @@ func (ur *UserRepository) GetUsers(ctx context.Context, tx pgx.Tx) ([]User, *exc
 			userIds[i] = users[i].UserId
 		}
 
-		rolesMap, rolesErr := ur.GetUsersRoles(ctx, userIds)
+		rolesMap, rolesErr := ur.GetUsersRoles(ctx, tx, userIds)
 		if rolesErr != nil {
 			ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
 			return nil, rolesErr
@@ -212,9 +236,28 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 		return nil, validationErr
 	}
 
-	rolesMap, rolesErr := ur.GetUsersRoles(ctx, []int32{updateUser.UserId})
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ur.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ur.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	rolesMap, rolesErr := ur.GetUsersRoles(ctx, txToUse, []int32{updateUser.UserId})
 	if rolesErr != nil {
 		ur.logger.Error("Failed to get user roles", zap.Error(rolesErr))
+		txErr = rolesErr
 		return nil, rolesErr
 	}
 
@@ -230,11 +273,13 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 
 		if _, rolesErr2 := ur.AreRolesValid(ctx, updateUser.Roles); rolesErr2 != nil {
 			ur.logger.Error("Failed to validate roles", zap.Error(rolesErr2))
+			txErr = rolesErr2
 			return nil, rolesErr2
 		}
 
-		if delRolesErr := ur.deleteUserRoles(ctx, tx, updateUser.UserId); delRolesErr != nil {
+		if delRolesErr := ur.deleteUserRoles(ctx, txToUse, updateUser.UserId); delRolesErr != nil {
 			ur.logger.Error("Failed to delete user roles", zap.Error(delRolesErr))
+			txErr = delRolesErr
 			return nil, delRolesErr
 		}
 
@@ -257,35 +302,33 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser 
 					  (SELECT password FROM updated_user);
 		`
 
-		if tx != nil {
-			ur.logger.Debug("Updating user with roles in transaction")
-			err = tx.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId, updateUser.Roles).
-				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-		} else {
-			ur.logger.Debug("Updating user with roles without transaction")
-			err = ur.db.Pool.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId, updateUser.Roles).
-				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-		}
+		ur.logger.Debug("Updating user with roles", zap.Bool("has_transaction", tx != nil))
+		err = txToUse.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId, updateUser.Roles).
+			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 	} else {
 		sql := "UPDATE users " +
 			" SET first_name = $1, last_name = $2, email = $3 " +
 			"WHERE user_id = $4 " +
 			"RETURNING user_id, first_name, last_name, email, password;"
 
-		if tx != nil {
-			ur.logger.Debug("Updating user in transaction")
-			err = tx.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
-				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-		} else {
-			ur.logger.Debug("Updating user without transaction")
-			err = ur.db.Pool.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
-				Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
-		}
+		ur.logger.Debug("Updating user", zap.Bool("has_transaction", tx != nil))
+		err = txToUse.QueryRow(ctx, sql, updateUser.FirstName, updateUser.LastName, updateUser.Email, updateUser.UserId).
+			Scan(&user.UserId, &user.FirstName, &user.LastName, &user.Email, &user.Password)
 	}
 
 	if err != nil {
 		ur.logger.Error("Failed to update user", zap.Error(err))
-		return nil, exceptions.PgErrorToAppError(err)
+		txErr = exceptions.PgErrorToAppError(err)
+		return nil, txErr
+	}
+
+	if tx == nil {
+		commitErr := ur.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
 	}
 
 	user.Roles = updateUser.Roles
@@ -326,37 +369,64 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, tx pgx.Tx, userId int3
 		return exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = ur.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return txErr
+		}
+		defer func() {
+			if !committed {
+				_ = ur.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
 	sql := "DELETE FROM users WHERE user_id = $1;"
 
 	var err error
 	var cmdTag pgconn.CommandTag
-	if tx != nil {
-		ur.logger.Debug("Deleting user in transaction")
-		cmdTag, err = tx.Exec(ctx, sql, userId)
-	} else {
-		ur.logger.Debug("Deleting user without transaction")
-		cmdTag, err = ur.db.Pool.Exec(ctx, sql, userId)
-	}
+
+	ur.logger.Debug("Deleting user", zap.Bool("has_transaction", tx != nil))
+	cmdTag, err = txToUse.Exec(ctx, sql, userId)
+
 	if err != nil {
 		ur.logger.Error("Failed to delete user", zap.Error(err))
-		return exceptions.PgErrorToAppError(err)
+		txErr = exceptions.PgErrorToAppError(err)
+		return txErr
 	}
 
 	if cmdTag.RowsAffected() == 0 {
 		ur.logger.Error("Failed to delete user - user not found", zap.Int32("user_id", userId))
-		return exceptions.NewNotFoundError("User not found")
+		txErr = exceptions.NewNotFoundError("User not found")
+		return txErr
 	}
 
-	delRolesErr := ur.deleteUserRoles(ctx, tx, userId)
+	delRolesErr := ur.deleteUserRoles(ctx, txToUse, userId)
 	if delRolesErr != nil {
 		ur.logger.Error("Failed to delete user roles", zap.Error(delRolesErr))
+		txErr = delRolesErr
 		return delRolesErr
+	}
+
+	if tx == nil {
+		commitErr := ur.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return commitErr
+		}
+		committed = true
 	}
 
 	return nil
 }
 
-func (ur *UserRepository) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+func (ur *UserRepository) GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError) {
 	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
 		return nil, exceptions.NewValidationError("Invalid IDs", messages)
 	}
@@ -369,7 +439,17 @@ func (ur *UserRepository) GetUsersRoles(ctx context.Context, userIds []int32) (m
 		ORDER BY ur.user_id, r.role_name;
 	`
 
-	rows, err := ur.db.Pool.Query(ctx, sql, userIds)
+	var rows pgx.Rows
+	var err error
+
+	if tx != nil {
+		ur.logger.Debug("Getting users roles in transaction")
+		rows, err = tx.Query(ctx, sql, userIds)
+	} else {
+		ur.logger.Debug("Getting users roles without transaction")
+		rows, err = ur.db.Pool.Query(ctx, sql, userIds)
+	}
+
 	if err != nil {
 		ur.logger.Error("Failed to get users roles", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)

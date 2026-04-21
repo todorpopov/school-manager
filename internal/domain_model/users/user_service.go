@@ -7,6 +7,7 @@ import (
 	"github.com/todorpopov/school-manager/internal"
 	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/exceptions"
+	"github.com/todorpopov/school-manager/persistence"
 )
 
 type IUserService interface {
@@ -19,13 +20,14 @@ type IUserService interface {
 	UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError
 	DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) *exceptions.AppError
 
-	GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError)
+	GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError)
 	AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError)
 }
 
 type UserService struct {
 	bcryptSvc internal.IBCryptService
 	usrRepo   IUserRepository
+	txFactory persistence.ITransactionFactory
 }
 
 func nullPassword(usr *User) {
@@ -34,8 +36,8 @@ func nullPassword(usr *User) {
 	}
 }
 
-func NewUserService(bcryptSvc internal.IBCryptService, usrRepo IUserRepository) *UserService {
-	return &UserService{bcryptSvc, usrRepo}
+func NewUserService(bcryptSvc internal.IBCryptService, usrRepo IUserRepository, txFactory persistence.ITransactionFactory) *UserService {
+	return &UserService{bcryptSvc, usrRepo, txFactory}
 }
 
 func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *CreateUser) (*User, *exceptions.AppError) {
@@ -51,9 +53,42 @@ func (us *UserService) CreateUser(ctx context.Context, tx pgx.Tx, createUser *Cr
 
 	createUserCpy := *createUser
 	createUserCpy.Password = hash
-	usr, err := us.usrRepo.CreateUser(ctx, tx, &createUserCpy)
+
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = us.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
+		}
+		defer func() {
+			if !committed {
+				_ = us.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	usr, err := us.usrRepo.CreateUser(ctx, txToUse, &createUserCpy)
+	if err != nil {
+		txErr = err
+		return nil, err
+	}
+
+	if tx == nil {
+		commitErr := us.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
+	}
+
 	nullPassword(usr)
-	return usr, err
+	return usr, nil
 }
 
 func (us *UserService) GetUserById(ctx context.Context, tx pgx.Tx, userId int32) (*User, *exceptions.AppError) {
@@ -93,9 +128,42 @@ func (us *UserService) UpdateUser(ctx context.Context, tx pgx.Tx, updateUser *Up
 	if validationErr := ValidateUpdateUser(updateUser); validationErr != nil {
 		return nil, validationErr
 	}
-	usr, err := us.usrRepo.UpdateUser(ctx, tx, updateUser)
+
+	var txToUse pgx.Tx
+	var txErr *exceptions.AppError
+	committed := false
+
+	if tx != nil {
+		txToUse = tx
+	} else {
+		txToUse, txErr = us.txFactory.BeginTransaction(ctx)
+		if txErr != nil {
+			return nil, txErr
+		}
+		defer func() {
+			if !committed {
+				_ = us.txFactory.CommitOrRollback(ctx, txToUse, txErr)
+			}
+		}()
+	}
+
+	usr, err := us.usrRepo.UpdateUser(ctx, txToUse, updateUser)
+	if err != nil {
+		txErr = err
+		return nil, err
+	}
+
+	if tx == nil {
+		commitErr := us.txFactory.CommitOrRollback(ctx, txToUse, nil)
+		if commitErr != nil {
+			txErr = commitErr
+			return nil, commitErr
+		}
+		committed = true
+	}
+
 	nullPassword(usr)
-	return usr, err
+	return usr, nil
 }
 
 func (us *UserService) UpdateUserPassword(ctx context.Context, tx pgx.Tx, updateUserPass *UpdateUserPassword) *exceptions.AppError {
@@ -118,11 +186,11 @@ func (us *UserService) DeleteUser(ctx context.Context, tx pgx.Tx, userId int32) 
 	return us.usrRepo.DeleteUser(ctx, tx, userId)
 }
 
-func (us *UserService) GetUsersRoles(ctx context.Context, userIds []int32) (map[int32][]string, *exceptions.AppError) {
+func (us *UserService) GetUsersRoles(ctx context.Context, tx pgx.Tx, userIds []int32) (map[int32][]string, *exceptions.AppError) {
 	if messages := domain_model.ValidateIds(userIds, true); len(messages) != 0 {
 		return nil, exceptions.NewValidationError("Invalid IDs", messages)
 	}
-	return us.usrRepo.GetUsersRoles(ctx, userIds)
+	return us.usrRepo.GetUsersRoles(ctx, tx, userIds)
 }
 
 func (us *UserService) AreRolesValid(ctx context.Context, roles []string) (bool, *exceptions.AppError) {

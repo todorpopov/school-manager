@@ -51,21 +51,6 @@ func NewDatabase(env *configs.Config) (*Database, error) {
 	return &Database{Pool: pool}, nil
 }
 
-func (db *Database) BeginTransaction(ctx context.Context) (pgx.Tx, error) {
-	return db.Pool.Begin(ctx)
-}
-
-func CommitOrRollback(ctx context.Context, tx pgx.Tx, err *error) {
-	if *err != nil {
-		_ = tx.Rollback(ctx)
-		return
-	}
-	commitErr := tx.Commit(ctx)
-	if commitErr != nil {
-		*err = commitErr
-	}
-}
-
 type MigrationDirection int
 
 const (

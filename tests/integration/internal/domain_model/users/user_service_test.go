@@ -8,12 +8,14 @@ import (
 	"github.com/todorpopov/school-manager/internal"
 	"github.com/todorpopov/school-manager/internal/domain_model/roles"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
+	"github.com/todorpopov/school-manager/persistence"
 	"github.com/todorpopov/school-manager/tests/integration"
 )
 
 type UserServiceSuite struct {
 	integration.TestSuite
 	bcryptSvc internal.IBCryptService
+	txFactory persistence.ITransactionFactory
 	usersSvc  users.IUserService
 	rolesRepo roles.IRoleRepository
 }
@@ -21,8 +23,9 @@ type UserServiceSuite struct {
 func (suite *UserServiceSuite) SetupSuite() {
 	suite.TestSuite.SetupSuite()
 	suite.bcryptSvc = internal.NewBCryptService()
+	suite.txFactory = persistence.NewTransactionFactory(suite.Db)
 	usersRepo := users.NewUserRepository(suite.Db, suite.Logger)
-	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo)
+	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo, suite.txFactory)
 	suite.rolesRepo = roles.NewRoleRepository(suite.Db, suite.Logger)
 }
 
