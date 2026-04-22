@@ -10,6 +10,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/domain_model/grades"
 	"github.com/todorpopov/school-manager/internal/domain_model/parents"
 	"github.com/todorpopov/school-manager/internal/domain_model/roles"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/domain_model/sessions"
 	"github.com/todorpopov/school-manager/internal/domain_model/students"
 	"github.com/todorpopov/school-manager/internal/domain_model/subjects"
@@ -28,6 +29,8 @@ type Dependencies struct {
 	SessionSvc         sessions.ISessionService
 	RoleRepo           roles.IRoleRepository
 	RoleSvc            roles.IRoleService
+	SchoolRepo         schools.ISchoolRepository
+	SchoolSvc          schools.ISchoolService
 	DirectorRepo       directors.IDirectorRepository
 	DirectorSvc        directors.IDirectorService
 	TeacherRepo        teachers.ITeacherRepository
@@ -67,6 +70,9 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 
 	roleRepo := roles.NewRoleRepository(db, logger)
 	roleSvc := roles.NewRoleService(roleRepo)
+
+	schoolRepo := schools.NewSchoolRepository(db, logger)
+	schoolSvc := schools.NewSchoolService(schoolRepo)
 
 	directorRepo := directors.NewDirectorRepository(db, logger)
 	directorSvc := directors.NewDirectorService(directorRepo, usrSvc, txFactory)
@@ -112,6 +118,8 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 		SessionSvc:         sessionSvc,
 		RoleRepo:           roleRepo,
 		RoleSvc:            roleSvc,
+		SchoolRepo:         schoolRepo,
+		SchoolSvc:          schoolSvc,
 		DirectorRepo:       directorRepo,
 		DirectorSvc:        directorSvc,
 		TeacherRepo:        teacherRepo,
