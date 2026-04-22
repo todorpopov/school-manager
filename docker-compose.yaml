@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: school-manager-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: school_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d school_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - school-manager-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: school-manager-api
+    environment:
+      API_PORT: "8080"
+      DB_URL: "postgres://admin:admin@postgres:5432/school_manager?sslmode=disable"
+      DB_MIN_CONNECTIONS: "5"
+      DB_MAX_CONNECTIONS: "10"
+      DB_MAX_CONNECTION_LIFETIME: "5m"
+      DB_MAX_CONNECTION_IDLE_TIME: "10m"
+      SESSION_EXPIRATION: "1h"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - school-manager-network
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  school-manager-network:
+    driver: bridge
+
