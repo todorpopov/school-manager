@@ -29,6 +29,7 @@ function getDefaultValues<T extends { [key: string]: unknown }>(
         defaults[f.key] = '' as unknown as T[keyof T]
       }
     })
+
   return defaults
 }
 
