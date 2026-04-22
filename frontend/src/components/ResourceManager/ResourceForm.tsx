@@ -17,6 +17,7 @@ function getDefaultValues<T extends { [key: string]: unknown }>(
   initial?: Partial<T>
 ): Partial<T> {
   const defaults: Partial<T> = {}
+
   fields
     .filter((f) => !f.hideInForm)
     .forEach((f) => {
