@@ -6,7 +6,7 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
     console.log(email, password);
     return {
         sessionId: 'mock-session-id',
-        roles: ['TEACHER', 'PARENT'],
+        roles: ['ADMIN'],
         firstName: 'Ivan',
         lastName: 'Petrov',
         email,

@@ -1,4 +1,3 @@
-import { useAuth } from '../hooks/useAuth'
 import { ResourceManager } from '../components/ResourceManager'
 import type { FieldConfig } from '../components/ResourceManager'
 import { useState } from 'react'
@@ -35,20 +34,8 @@ const MOCK_USERS: User[] = [
 
 let nextId = 3
 
-const ROLE_LABELS: Record<string, string> = {
-    ADMIN: 'Administrator',
-    DIRECTOR: 'Director',
-    TEACHER: 'Teacher',
-    PARENT: 'Parent',
-    STUDENT: 'Student',
-    USER: 'User',
-}
-
 export default function DashboardPage() {
-    const { user: auth, logout } = useAuth()
     const [users, setUsers] = useState<User[]>(MOCK_USERS)
-
-    const handleLogout = () => { logout() }
 
     const handleCreate = async (values: Partial<User>) => {
         setUsers((prev) => [...prev, { ...(values as User), user_id: nextId++ }])
@@ -63,36 +50,16 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-            <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center justify-between">
-                <span className="font-semibold text-slate-800 dark:text-slate-100">School Manager</span>
-                <div className="flex items-center gap-4">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
-                        {auth?.firstName} {auth?.lastName}
-                        <span className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-medium">
-                            {ROLE_LABELS[auth?.activeRole ?? ''] ?? auth?.activeRole}
-                        </span>
-                    </span>
-                    <button
-                        onClick={handleLogout}
-                        className="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 transition-colors cursor-pointer bg-transparent border-none"
-                    >
-                        Sign out
-                    </button>
-                </div>
-            </header>
-
-            <main className="max-w-4xl mx-auto px-4 py-10">
-                <ResourceManager<User>
-                    title="Users"
-                    data={users}
-                    fields={USER_FIELDS}
-                    idKey="user_id"
-                    onCreate={handleCreate}
-                    onUpdate={handleUpdate}
-                    onDelete={handleDelete}
-                />
-            </main>
-        </div>
+        <main className="max-w-4xl mx-auto px-4 py-10">
+            <ResourceManager<User>
+                title="Users"
+                data={users}
+                fields={USER_FIELDS}
+                idKey="user_id"
+                onCreate={handleCreate}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+            />
+        </main>
     )
 }
