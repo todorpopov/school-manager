@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS students (
     student_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+    school_id INTEGER NOT NULL REFERENCES schools(school_id) ON DELETE RESTRICT,
     class_id INTEGER REFERENCES classes(class_id) ON DELETE SET NULL
 );
 -- +goose StatementEnd

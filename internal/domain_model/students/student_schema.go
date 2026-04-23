@@ -3,20 +3,23 @@ package students
 import (
 	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/domain_model/classes"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
 type Student struct {
-	StudentId int32          `json:"student_id"`
-	UserId    int32          `json:"user_id"`
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Email     string         `json:"email"`
-	Class     *classes.Class `json:"class,omitempty"`
-	Roles     []string       `json:"roles,omitempty"`
+	StudentId int32           `json:"student_id"`
+	UserId    int32           `json:"user_id"`
+	FirstName string          `json:"first_name"`
+	LastName  string          `json:"last_name"`
+	Email     string          `json:"email"`
+	School    *schools.School `json:"school"`
+	Class     *classes.Class  `json:"class,omitempty"`
+	Roles     []string        `json:"roles,omitempty"`
 }
 
 type CreateStudent struct {
+	SchoolId  int32  `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
@@ -42,6 +45,11 @@ type UpdateStudentRequest struct {
 func ValidateCreateStudent(createStudent *CreateStudent) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string
+
+	msg = domain_model.ValidateId(createStudent.SchoolId)
+	if msg != "" {
+		messages["school_id"] = msg
+	}
 
 	msg = domain_model.ValidateString(&createStudent.FirstName, 1, 255, true)
 	if msg != "" {

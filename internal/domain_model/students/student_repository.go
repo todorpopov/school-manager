@@ -7,13 +7,14 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal/domain_model"
 	"github.com/todorpopov/school-manager/internal/domain_model/classes"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
 )
 
 type IStudentRepository interface {
-	CreateStudent(ctx context.Context, tx pgx.Tx, userId int32, classId *int32) (*Student, *exceptions.AppError)
+	CreateStudent(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32, classId *int32) (*Student, *exceptions.AppError)
 	GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError)
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
@@ -30,7 +31,10 @@ func NewStudentRepository(db *persistence.Database, logger *zap.Logger) *Student
 	return &StudentRepository{db, logger}
 }
 
-func (sr *StudentRepository) CreateStudent(ctx context.Context, tx pgx.Tx, userId int32, classId *int32) (*Student, *exceptions.AppError) {
+func (sr *StudentRepository) CreateStudent(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32, classId *int32) (*Student, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
 	if msg := domain_model.ValidateId(userId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
@@ -41,23 +45,20 @@ func (sr *StudentRepository) CreateStudent(ctx context.Context, tx pgx.Tx, userI
 	}
 
 	sql := `
-		INSERT INTO students (user_id, class_id)
-		VALUES ($1, $2)
-		RETURNING student_id, user_id, class_id;
+		INSERT INTO students (school_id, user_id, class_id)
+		VALUES ($1, $2, $3)
+		RETURNING student_id;
 	`
 
-	var student Student
-	var tempClassId *int32
+	var studentId int32
 	var err error
 
 	if tx != nil {
 		sr.logger.Debug("Creating student in transaction")
-		err = tx.QueryRow(ctx, sql, userId, classId).
-			Scan(&student.StudentId, &student.UserId, &tempClassId)
+		err = tx.QueryRow(ctx, sql, schoolId, userId, classId).Scan(&studentId)
 	} else {
 		sr.logger.Debug("Creating student without transaction")
-		err = sr.db.Pool.QueryRow(ctx, sql, userId, classId).
-			Scan(&student.StudentId, &student.UserId, &tempClassId)
+		err = sr.db.Pool.QueryRow(ctx, sql, schoolId, userId, classId).Scan(&studentId)
 	}
 
 	if err != nil {
@@ -65,7 +66,7 @@ func (sr *StudentRepository) CreateStudent(ctx context.Context, tx pgx.Tx, userI
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	return &student, nil
+	return sr.GetStudentById(ctx, tx, studentId)
 }
 
 func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError) {
@@ -77,15 +78,18 @@ func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, stud
 		SELECT 
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
+			sch.school_id, sch.school_name, sch.school_address,
 			c.class_id, c.grade_level, c.class_name
 		FROM students s
 		INNER JOIN users u ON s.user_id = u.user_id
+		INNER JOIN schools sch ON s.school_id = sch.school_id
 		LEFT JOIN classes c ON s.class_id = c.class_id
 		WHERE s.student_id = $1;
 	`
 
 	var student Student
 	var class classes.Class
+	var school schools.School
 	var tempClassId *int32
 	var classId *int32
 	var gradeLevel *int32
@@ -98,6 +102,7 @@ func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, stud
 			Scan(
 				&student.StudentId, &student.UserId, &tempClassId,
 				&student.FirstName, &student.LastName, &student.Email,
+				&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
 				&classId, &gradeLevel, &className,
 			)
 	} else {
@@ -106,6 +111,7 @@ func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, stud
 			Scan(
 				&student.StudentId, &student.UserId, &tempClassId,
 				&student.FirstName, &student.LastName, &student.Email,
+				&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
 				&classId, &gradeLevel, &className,
 			)
 	}
@@ -114,6 +120,8 @@ func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, stud
 		sr.logger.Error("Failed to get student by id", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
 	}
+
+	student.School = &school
 
 	if classId != nil && gradeLevel != nil && className != nil {
 		class.ClassId = *classId
@@ -134,15 +142,18 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 		SELECT 
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
+			sch.school_id, sch.school_name, sch.school_address,
 			c.class_id, c.grade_level, c.class_name
 		FROM students s
 		INNER JOIN users u ON s.user_id = u.user_id
+		INNER JOIN schools sch ON s.school_id = sch.school_id
 		LEFT JOIN classes c ON s.class_id = c.class_id
 		WHERE s.user_id = $1;
 	`
 
 	var student Student
 	var class classes.Class
+	var school schools.School
 	var tempClassId *int32
 	var classId *int32
 	var gradeLevel *int32
@@ -155,6 +166,7 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 			Scan(
 				&student.StudentId, &student.UserId, &tempClassId,
 				&student.FirstName, &student.LastName, &student.Email,
+				&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
 				&classId, &gradeLevel, &className,
 			)
 	} else {
@@ -163,6 +175,7 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 			Scan(
 				&student.StudentId, &student.UserId, &tempClassId,
 				&student.FirstName, &student.LastName, &student.Email,
+				&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
 				&classId, &gradeLevel, &className,
 			)
 	}
@@ -171,6 +184,8 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 		sr.logger.Error("Failed to get student by user_id", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
 	}
+
+	student.School = &school
 
 	if classId != nil && gradeLevel != nil && className != nil {
 		class.ClassId = *classId
@@ -187,9 +202,11 @@ func (sr *StudentRepository) GetStudents(ctx context.Context, tx pgx.Tx) ([]Stud
 		SELECT 
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
+			sch.school_id, sch.school_name, sch.school_address,
 			c.class_id, c.grade_level, c.class_name
 		FROM students s
 		INNER JOIN users u ON s.user_id = u.user_id
+		INNER JOIN schools sch ON s.school_id = sch.school_id
 		LEFT JOIN classes c ON s.class_id = c.class_id
 		ORDER BY c.grade_level, c.class_name, u.last_name, u.first_name;
 	`
@@ -215,19 +232,24 @@ func (sr *StudentRepository) GetStudents(ctx context.Context, tx pgx.Tx) ([]Stud
 	for rows.Next() {
 		var student Student
 		var class classes.Class
+		var school schools.School
 		var tempClassId *int32
 		var classId *int32
 		var gradeLevel *int32
 		var className *string
+
 		err = rows.Scan(
 			&student.StudentId, &student.UserId, &tempClassId,
 			&student.FirstName, &student.LastName, &student.Email,
+			&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
 			&classId, &gradeLevel, &className,
 		)
 		if err != nil {
 			sr.logger.Error("Failed to scan student row", zap.Error(err))
 			return nil, exceptions.PgErrorToAppError(err)
 		}
+
+		student.School = &school
 
 		if classId != nil && gradeLevel != nil && className != nil {
 			class.ClassId = *classId

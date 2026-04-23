@@ -67,7 +67,7 @@ func (ss *StudentService) CreateStudent(ctx context.Context, tx pgx.Tx, createSt
 		return nil, userErr
 	}
 
-	studentRecord, studentErr := ss.studentRepo.CreateStudent(ctx, txToUse, user.UserId, createStudent.ClassId)
+	studentRecord, studentErr := ss.studentRepo.CreateStudent(ctx, txToUse, createStudent.SchoolId, user.UserId, createStudent.ClassId)
 	if studentErr != nil {
 		txErr = studentErr
 		return nil, studentErr

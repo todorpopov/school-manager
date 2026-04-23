@@ -6,13 +6,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
 )
 
 type ITeacherRepository interface {
-	CreateTeacher(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError)
+	CreateTeacher(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32) (*Teacher, *exceptions.AppError)
 	GetTeacherById(ctx context.Context, tx pgx.Tx, teacherId int32) (*Teacher, *exceptions.AppError)
 	GetTeacherByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError)
 	GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError)
@@ -28,28 +29,30 @@ func NewTeacherRepository(db *persistence.Database, logger *zap.Logger) *Teacher
 	return &TeacherRepository{db, logger}
 }
 
-func (tr *TeacherRepository) CreateTeacher(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError) {
+func (tr *TeacherRepository) CreateTeacher(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32) (*Teacher, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
 	if msg := domain_model.ValidateId(userId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 
 	sql := `
-		INSERT INTO teachers (user_id)
-		VALUES ($1)
-		RETURNING teacher_id, user_id;
+		INSERT INTO teachers (school_id, user_id)
+		VALUES ($1, $2)
+		RETURNING teacher_id;
 	`
 
-	var teacher Teacher
+	var teacherId int32
 	var err error
 
 	if tx != nil {
 		tr.logger.Debug("Creating teacher in transaction")
-		err = tx.QueryRow(ctx, sql, userId).
-			Scan(&teacher.TeacherId, &teacher.UserId)
+		err = tx.QueryRow(ctx, sql, schoolId, userId).Scan(&teacherId)
 	} else {
 		tr.logger.Debug("Creating teacher without transaction")
-		err = tr.db.Pool.QueryRow(ctx, sql, userId).
-			Scan(&teacher.TeacherId, &teacher.UserId)
+		err = tr.db.Pool.QueryRow(ctx, sql, schoolId, userId).Scan(&teacherId)
 	}
 
 	if err != nil {
@@ -57,7 +60,7 @@ func (tr *TeacherRepository) CreateTeacher(ctx context.Context, tx pgx.Tx, userI
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	return &teacher, nil
+	return tr.GetTeacherById(ctx, tx, teacherId)
 }
 
 func (tr *TeacherRepository) GetTeacherById(ctx context.Context, tx pgx.Tx, teacherId int32) (*Teacher, *exceptions.AppError) {
@@ -66,28 +69,40 @@ func (tr *TeacherRepository) GetTeacherById(ctx context.Context, tx pgx.Tx, teac
 	}
 
 	sql := `
-		SELECT t.teacher_id, t.user_id, u.first_name, u.last_name, u.email
+		SELECT t.teacher_id, t.school_id, t.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM teachers t
 		INNER JOIN users u ON t.user_id = u.user_id
+		INNER JOIN schools s ON t.school_id = s.school_id
 		WHERE t.teacher_id = $1;
 	`
 
 	var teacher Teacher
+	var schoolId int32
+	var schoolName, schoolAddress string
 	var err error
 
 	if tx != nil {
 		tr.logger.Debug("Getting teacher by id in transaction", zap.Int32("teacher_id", teacherId))
 		err = tx.QueryRow(ctx, sql, teacherId).
-			Scan(&teacher.TeacherId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email)
+			Scan(&teacher.TeacherId, &schoolId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	} else {
 		tr.logger.Debug("Getting teacher by id without transaction", zap.Int32("teacher_id", teacherId))
 		err = tr.db.Pool.QueryRow(ctx, sql, teacherId).
-			Scan(&teacher.TeacherId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email)
+			Scan(&teacher.TeacherId, &schoolId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	}
 
 	if err != nil {
 		tr.logger.Error("Failed to get teacher by id", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	teacher.School = &schools.School{
+		SchoolId:      schoolId,
+		SchoolName:    schoolName,
+		SchoolAddress: schoolAddress,
 	}
 
 	return &teacher, nil
@@ -99,23 +114,29 @@ func (tr *TeacherRepository) GetTeacherByUserId(ctx context.Context, tx pgx.Tx, 
 	}
 
 	sql := `
-		SELECT t.teacher_id, t.user_id, u.first_name, u.last_name, u.email
+		SELECT t.teacher_id, t.school_id, t.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM teachers t
 		INNER JOIN users u ON t.user_id = u.user_id
+		INNER JOIN schools s ON t.school_id = s.school_id
 		WHERE t.user_id = $1;
 	`
 
 	var teacher Teacher
+	var schoolId int32
+	var schoolName, schoolAddress string
 	var err error
 
 	if tx != nil {
 		tr.logger.Debug("Getting teacher by user_id in transaction", zap.Int32("user_id", userId))
 		err = tx.QueryRow(ctx, sql, userId).
-			Scan(&teacher.TeacherId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email)
+			Scan(&teacher.TeacherId, &schoolId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	} else {
 		tr.logger.Debug("Getting teacher by user_id without transaction", zap.Int32("user_id", userId))
 		err = tr.db.Pool.QueryRow(ctx, sql, userId).
-			Scan(&teacher.TeacherId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email)
+			Scan(&teacher.TeacherId, &schoolId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	}
 
 	if err != nil {
@@ -123,14 +144,22 @@ func (tr *TeacherRepository) GetTeacherByUserId(ctx context.Context, tx pgx.Tx, 
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	teacher.School = &schools.School{
+		SchoolId:      schoolId,
+		SchoolName:    schoolName,
+		SchoolAddress: schoolAddress,
+	}
+
 	return &teacher, nil
 }
 
 func (tr *TeacherRepository) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError) {
 	sql := `
-		SELECT t.teacher_id, t.user_id, u.first_name, u.last_name, u.email
+		SELECT t.teacher_id, t.school_id, t.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM teachers t
-		INNER JOIN users u ON t.user_id = u.user_id;
+		INNER JOIN users u ON t.user_id = u.user_id
+		INNER JOIN schools s ON t.school_id = s.school_id;
 	`
 
 	var teachers []Teacher
@@ -153,11 +182,22 @@ func (tr *TeacherRepository) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teac
 
 	for rows.Next() {
 		var teacher Teacher
-		err = rows.Scan(&teacher.TeacherId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email)
+		var schoolId int32
+		var schoolName, schoolAddress string
+
+		err = rows.Scan(&teacher.TeacherId, &schoolId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+			&schoolId, &schoolName, &schoolAddress)
 		if err != nil {
 			tr.logger.Error("Failed to scan teacher row", zap.Error(err))
 			return nil, exceptions.PgErrorToAppError(err)
 		}
+
+		teacher.School = &schools.School{
+			SchoolId:      schoolId,
+			SchoolName:    schoolName,
+			SchoolAddress: schoolAddress,
+		}
+
 		teachers = append(teachers, teacher)
 	}
 
@@ -168,7 +208,6 @@ func (tr *TeacherRepository) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teac
 
 	return teachers, nil
 }
-
 
 func (tr *TeacherRepository) DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherId int32) *exceptions.AppError {
 	if msg := domain_model.ValidateId(teacherId); msg != "" {
@@ -198,4 +237,3 @@ func (tr *TeacherRepository) DeleteTeacher(ctx context.Context, tx pgx.Tx, teach
 
 	return nil
 }
-

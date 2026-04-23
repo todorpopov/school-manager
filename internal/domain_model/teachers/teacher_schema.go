@@ -2,19 +2,22 @@ package teachers
 
 import (
 	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
 type Teacher struct {
-	TeacherId int32    `json:"teacher_id"`
-	UserId    int32    `json:"user_id"`
-	FirstName string   `json:"first_name"`
-	LastName  string   `json:"last_name"`
-	Email     string   `json:"email"`
-	Roles     []string `json:"roles,omitempty"`
+	TeacherId int32           `json:"teacher_id"`
+	UserId    int32           `json:"user_id"`
+	FirstName string          `json:"first_name"`
+	LastName  string          `json:"last_name"`
+	Email     string          `json:"email"`
+	School    *schools.School `json:"school"`
+	Roles     []string        `json:"roles,omitempty"`
 }
 
 type CreateTeacher struct {
+	SchoolId  int32  `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
@@ -37,6 +40,11 @@ type UpdateTeacherRequest struct {
 func ValidateCreateTeacher(createTeacher *CreateTeacher) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string
+
+	msg = domain_model.ValidateId(createTeacher.SchoolId)
+	if msg != "" {
+		messages["school_id"] = msg
+	}
 
 	msg = domain_model.ValidateString(&createTeacher.FirstName, 1, 255, true)
 	if msg != "" {

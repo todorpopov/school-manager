@@ -67,7 +67,7 @@ func (ts *TeacherService) CreateTeacher(ctx context.Context, tx pgx.Tx, createTe
 		return nil, userErr
 	}
 
-	teacherRecord, teacherErr := ts.teacherRepo.CreateTeacher(ctx, txToUse, user.UserId)
+	teacherRecord, teacherErr := ts.teacherRepo.CreateTeacher(ctx, txToUse, createTeacher.SchoolId, user.UserId)
 	if teacherErr != nil {
 		txErr = teacherErr
 		return nil, teacherErr
@@ -88,6 +88,7 @@ func (ts *TeacherService) CreateTeacher(ctx context.Context, tx pgx.Tx, createTe
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
+		School:    teacherRecord.School,
 		Roles:     user.Roles,
 	}
 
