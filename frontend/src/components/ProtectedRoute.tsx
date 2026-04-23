@@ -1,16 +1,27 @@
-import React from 'react'
+import type React from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
+import type { Role } from '../types/auth'
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { auth } = useAuth()
+interface ProtectedRouteProps {
+    children: React.ReactNode
+    allowedRoles?: Role[]
+}
 
-  if (!auth) {
-    return <Navigate to="/login" replace />
-  }
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+    const { user, loading } = useAuth()
 
-  return <>{children}</>
+    if (loading) return null
+
+    if (!user) {
+        return <Navigate to="/login" replace />
+    }
+
+    if (allowedRoles && !allowedRoles.includes(user.activeRole)) {
+        return <Navigate to="/access-denied" replace />
+    }
+
+    return <>{children}</>
 }
 
 export default ProtectedRoute
-

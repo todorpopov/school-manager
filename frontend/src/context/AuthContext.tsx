@@ -1,98 +1,74 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-import type { AuthState, AuthResponse, Role } from '../types/auth'
+import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { Role, AuthResponse } from '../types/auth'
 import { AMBIGUOUS_ROLE_PAIRS } from '../types/auth'
+import type { AuthUser } from './authContext.types'
+import { AuthContext } from './authContext.types'
 
-interface AuthContextValue {
-  auth: AuthState | null
-  pendingAuth: AuthResponse | null
-  login: (response: AuthResponse) => void
-  selectRole: (role: Role) => void
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
-
-const SESSION_KEY = 'sm_auth'
-
-function loadAuth(): AuthState | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    return raw ? (JSON.parse(raw) as AuthState) : null
-  } catch {
-    return null
-  }
-}
-
-function saveAuth(state: AuthState) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(state))
-}
-
-function clearAuth() {
-  sessionStorage.removeItem(SESSION_KEY)
-}
+const USER_KEY = 'sm_user'
 
 function needsRolePicker(roles: Role[]): boolean {
-  return AMBIGUOUS_ROLE_PAIRS.some(
-    (pair) => pair.every((r) => roles.includes(r))
-  )
+    return AMBIGUOUS_ROLE_PAIRS.some((pair) => pair.every((r) => roles.includes(r)))
+}
+
+function buildUser(authResponse: AuthResponse, activeRole: Role): AuthUser {
+    return {
+        sessionId: authResponse.sessionId,
+        token: authResponse.token,
+        activeRole,
+        roles: authResponse.roles,
+        firstName: authResponse.firstName,
+        lastName: authResponse.lastName,
+        email: authResponse.email,
+    }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<AuthState | null>(loadAuth)
-  const [pendingAuth, setPendingAuth] = useState<AuthResponse | null>(null)
+    const [user, setUser] = useState<AuthUser | null>(() => {
+        const stored = localStorage.getItem(USER_KEY)
+        return stored ? (JSON.parse(stored) as AuthUser) : null
+    })
+    const [pendingAuth, setPendingAuth] = useState<AuthResponse | null>(null)
+    const [loading] = useState(false)
+    const navigate = useNavigate()
 
-  const login = useCallback((response: AuthResponse) => {
-    if (needsRolePicker(response.roles)) {
-      setPendingAuth(response)
-      return
+    const saveUser = (newUser: AuthUser) => {
+        setUser(newUser)
+        localStorage.setItem(USER_KEY, JSON.stringify(newUser))
+        if (newUser.token) {
+            localStorage.setItem('token', newUser.token)
+        }
     }
 
-    const state: AuthState = {
-      sessionId: response.sessionId,
-      activeRole: response.roles[0],
-      roles: response.roles,
-      firstName: response.firstName,
-      lastName: response.lastName,
-      email: response.email,
-    }
-    saveAuth(state)
-    setAuth(state)
-  }, [])
+    const login = useCallback((authResponse: AuthResponse) => {
+        if (needsRolePicker(authResponse.roles)) {
+            setPendingAuth(authResponse)
+            return
+        }
+        const newUser = buildUser(authResponse, authResponse.roles[0])
+        saveUser(newUser)
+        navigate('/dashboard')
+    }, [navigate])
 
-  const selectRole = useCallback((role: Role) => {
-    if (!pendingAuth) {
-      return
-    }
+    const selectRole = useCallback((role: Role) => {
+        if (!pendingAuth) return
+        const newUser = buildUser(pendingAuth, role)
+        saveUser(newUser)
+        setPendingAuth(null)
+        navigate('/dashboard')
+    }, [pendingAuth, navigate])
 
-    const state: AuthState = {
-      sessionId: pendingAuth.sessionId,
-      activeRole: role,
-      roles: pendingAuth.roles,
-      firstName: pendingAuth.firstName,
-      lastName: pendingAuth.lastName,
-      email: pendingAuth.email,
-    }
-    saveAuth(state)
-    setAuth(state)
-    setPendingAuth(null)
-  }, [pendingAuth])
+    const logout = useCallback(() => {
+        setUser(null)
+        setPendingAuth(null)
+        localStorage.removeItem(USER_KEY)
+        localStorage.removeItem('token')
+        navigate('/login')
+    }, [navigate])
 
-  const logout = useCallback(() => {
-    clearAuth()
-    setAuth(null)
-    setPendingAuth(null)
-  }, [])
-
-  return (
-    <AuthContext.Provider value={{ auth, pendingAuth, login, selectRole, logout }}>
-      {children}
-    </AuthContext.Provider>
-  )
+    return (
+        <AuthContext.Provider value={{ user, pendingAuth, login, selectRole, logout, loading }}>
+            {children}
+        </AuthContext.Provider>
+    )
 }
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
-}
-
