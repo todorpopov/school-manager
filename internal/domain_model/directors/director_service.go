@@ -67,7 +67,7 @@ func (ds *DirectorService) CreateDirector(ctx context.Context, tx pgx.Tx, create
 		return nil, userErr
 	}
 
-	directorRecord, directorErr := ds.directorRepo.CreateDirector(ctx, txToUse, user.UserId)
+	directorRecord, directorErr := ds.directorRepo.CreateDirector(ctx, txToUse, createDirector.SchoolId, user.UserId)
 	if directorErr != nil {
 		txErr = directorErr
 		return nil, directorErr
@@ -88,6 +88,7 @@ func (ds *DirectorService) CreateDirector(ctx context.Context, tx pgx.Tx, create
 		FirstName:  user.FirstName,
 		LastName:   user.LastName,
 		Email:      user.Email,
+		School:     directorRecord.School,
 		Roles:      user.Roles,
 	}
 

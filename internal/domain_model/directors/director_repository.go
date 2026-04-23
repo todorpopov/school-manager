@@ -6,13 +6,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
 )
 
 type IDirectorRepository interface {
-	CreateDirector(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError)
+	CreateDirector(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32) (*Director, *exceptions.AppError)
 	GetDirectorById(ctx context.Context, tx pgx.Tx, directorId int32) (*Director, *exceptions.AppError)
 	GetDirectorByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError)
 	GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError)
@@ -28,28 +29,30 @@ func NewDirectorRepository(db *persistence.Database, logger *zap.Logger) *Direct
 	return &DirectorRepository{db, logger}
 }
 
-func (dr *DirectorRepository) CreateDirector(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError) {
+func (dr *DirectorRepository) CreateDirector(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32) (*Director, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
 	if msg := domain_model.ValidateId(userId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid user ID", map[string]string{"user_id": msg})
 	}
 
 	sql := `
-		INSERT INTO directors (user_id)
-		VALUES ($1)
-		RETURNING director_id, user_id;
+		INSERT INTO directors (school_id, user_id)
+		VALUES ($1, $2)
+		RETURNING director_id;
 	`
 
-	var director Director
+	var directorId int32
 	var err error
 
 	if tx != nil {
 		dr.logger.Debug("Creating director in transaction")
-		err = tx.QueryRow(ctx, sql, userId).
-			Scan(&director.DirectorId, &director.UserId)
+		err = tx.QueryRow(ctx, sql, schoolId, userId).Scan(&directorId)
 	} else {
 		dr.logger.Debug("Creating director without transaction")
-		err = dr.db.Pool.QueryRow(ctx, sql, userId).
-			Scan(&director.DirectorId, &director.UserId)
+		err = dr.db.Pool.QueryRow(ctx, sql, schoolId, userId).Scan(&directorId)
 	}
 
 	if err != nil {
@@ -57,7 +60,7 @@ func (dr *DirectorRepository) CreateDirector(ctx context.Context, tx pgx.Tx, use
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
-	return &director, nil
+	return dr.GetDirectorById(ctx, tx, directorId)
 }
 
 func (dr *DirectorRepository) GetDirectorById(ctx context.Context, tx pgx.Tx, directorId int32) (*Director, *exceptions.AppError) {
@@ -66,28 +69,40 @@ func (dr *DirectorRepository) GetDirectorById(ctx context.Context, tx pgx.Tx, di
 	}
 
 	sql := `
-		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email
+		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM directors d
 		INNER JOIN users u ON d.user_id = u.user_id
+		INNER JOIN schools s ON d.school_id = s.school_id
 		WHERE d.director_id = $1;
 	`
 
 	var director Director
+	var schoolId int32
+	var schoolName, schoolAddress string
 	var err error
 
 	if tx != nil {
 		dr.logger.Debug("Getting director by id in transaction", zap.Int32("director_id", directorId))
 		err = tx.QueryRow(ctx, sql, directorId).
-			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email)
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	} else {
 		dr.logger.Debug("Getting director by id without transaction", zap.Int32("director_id", directorId))
 		err = dr.db.Pool.QueryRow(ctx, sql, directorId).
-			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email)
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	}
 
 	if err != nil {
 		dr.logger.Error("Failed to get director by id", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	director.School = &schools.School{
+		SchoolId:      schoolId,
+		SchoolName:    schoolName,
+		SchoolAddress: schoolAddress,
 	}
 
 	return &director, nil
@@ -99,23 +114,29 @@ func (dr *DirectorRepository) GetDirectorByUserId(ctx context.Context, tx pgx.Tx
 	}
 
 	sql := `
-		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email
+		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM directors d
 		INNER JOIN users u ON d.user_id = u.user_id
+		INNER JOIN schools s ON d.school_id = s.school_id
 		WHERE d.user_id = $1;
 	`
 
 	var director Director
+	var schoolId int32
+	var schoolName, schoolAddress string
 	var err error
 
 	if tx != nil {
 		dr.logger.Debug("Getting director by user_id in transaction", zap.Int32("user_id", userId))
 		err = tx.QueryRow(ctx, sql, userId).
-			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email)
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	} else {
 		dr.logger.Debug("Getting director by user_id without transaction", zap.Int32("user_id", userId))
 		err = dr.db.Pool.QueryRow(ctx, sql, userId).
-			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email)
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolId, &schoolName, &schoolAddress)
 	}
 
 	if err != nil {
@@ -123,14 +144,22 @@ func (dr *DirectorRepository) GetDirectorByUserId(ctx context.Context, tx pgx.Tx
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 
+	director.School = &schools.School{
+		SchoolId:      schoolId,
+		SchoolName:    schoolName,
+		SchoolAddress: schoolAddress,
+	}
+
 	return &director, nil
 }
 
 func (dr *DirectorRepository) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError) {
 	sql := `
-		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email
+		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
 		FROM directors d
-		INNER JOIN users u ON d.user_id = u.user_id;
+		INNER JOIN users u ON d.user_id = u.user_id
+		INNER JOIN schools s ON d.school_id = s.school_id;
 	`
 
 	var directors []Director
@@ -153,11 +182,22 @@ func (dr *DirectorRepository) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Di
 
 	for rows.Next() {
 		var director Director
-		err = rows.Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email)
+		var schoolId int32
+		var schoolName, schoolAddress string
+
+		err = rows.Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+			&schoolId, &schoolName, &schoolAddress)
 		if err != nil {
 			dr.logger.Error("Failed to scan director row", zap.Error(err))
 			return nil, exceptions.PgErrorToAppError(err)
 		}
+
+		director.School = &schools.School{
+			SchoolId:      schoolId,
+			SchoolName:    schoolName,
+			SchoolAddress: schoolAddress,
+		}
+
 		directors = append(directors, director)
 	}
 
@@ -168,7 +208,6 @@ func (dr *DirectorRepository) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Di
 
 	return directors, nil
 }
-
 
 func (dr *DirectorRepository) DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError {
 	if msg := domain_model.ValidateId(directorId); msg != "" {
@@ -198,4 +237,3 @@ func (dr *DirectorRepository) DeleteDirector(ctx context.Context, tx pgx.Tx, dir
 
 	return nil
 }
-

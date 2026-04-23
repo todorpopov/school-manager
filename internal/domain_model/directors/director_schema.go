@@ -2,19 +2,22 @@ package directors
 
 import (
 	"github.com/todorpopov/school-manager/internal/domain_model"
+	"github.com/todorpopov/school-manager/internal/domain_model/schools"
 	"github.com/todorpopov/school-manager/internal/exceptions"
 )
 
 type Director struct {
-	DirectorId int32    `json:"director_id"`
-	UserId     int32    `json:"user_id"`
-	FirstName  string   `json:"first_name"`
-	LastName   string   `json:"last_name"`
-	Email      string   `json:"email"`
-	Roles      []string `json:"roles,omitempty"`
+	DirectorId int32           `json:"director_id"`
+	UserId     int32           `json:"user_id"`
+	FirstName  string          `json:"first_name"`
+	LastName   string          `json:"last_name"`
+	Email      string          `json:"email"`
+	School     *schools.School `json:"school"`
+	Roles      []string        `json:"roles,omitempty"`
 }
 
 type CreateDirector struct {
+	SchoolId  int32  `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
@@ -37,6 +40,11 @@ type UpdateDirectorRequest struct {
 func ValidateCreateDirector(createDirector *CreateDirector) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string
+
+	msg = domain_model.ValidateId(createDirector.SchoolId)
+	if msg != "" {
+		messages["school_id"] = msg
+	}
 
 	msg = domain_model.ValidateString(&createDirector.FirstName, 1, 255, true)
 	if msg != "" {
