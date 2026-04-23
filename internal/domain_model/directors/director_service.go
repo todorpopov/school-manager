@@ -53,6 +53,18 @@ func (ds *DirectorService) CreateDirector(ctx context.Context, tx pgx.Tx, create
 		}()
 	}
 
+	existingDirector, checkErr := ds.directorRepo.GetDirectorBySchoolId(ctx, txToUse, createDirector.SchoolId)
+	if checkErr == nil && existingDirector != nil {
+		txErr = exceptions.NewValidationError("A director already exists for this school", map[string]string{
+			"school_id": "This school already has a director assigned",
+		})
+		return nil, txErr
+	}
+	if checkErr != nil && checkErr.Code != "NOT_FOUND" {
+		txErr = checkErr
+		return nil, checkErr
+	}
+
 	createUser := &users.CreateUser{
 		FirstName: createDirector.FirstName,
 		LastName:  createDirector.LastName,

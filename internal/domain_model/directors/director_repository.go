@@ -16,6 +16,7 @@ type IDirectorRepository interface {
 	CreateDirector(ctx context.Context, tx pgx.Tx, schoolId int32, userId int32) (*Director, *exceptions.AppError)
 	GetDirectorById(ctx context.Context, tx pgx.Tx, directorId int32) (*Director, *exceptions.AppError)
 	GetDirectorByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError)
+	GetDirectorBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) (*Director, *exceptions.AppError)
 	GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError)
 	DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError
 }
@@ -146,6 +147,51 @@ func (dr *DirectorRepository) GetDirectorByUserId(ctx context.Context, tx pgx.Tx
 
 	director.School = &schools.School{
 		SchoolId:      schoolId,
+		SchoolName:    schoolName,
+		SchoolAddress: schoolAddress,
+	}
+
+	return &director, nil
+}
+
+func (dr *DirectorRepository) GetDirectorBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) (*Director, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
+	sql := `
+		SELECT d.director_id, d.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
+		FROM directors d
+		INNER JOIN users u ON d.user_id = u.user_id
+		INNER JOIN schools s ON d.school_id = s.school_id
+		WHERE d.school_id = $1;
+	`
+
+	var director Director
+	var schoolIdResult int32
+	var schoolName, schoolAddress string
+	var err error
+
+	if tx != nil {
+		dr.logger.Debug("Getting director by school_id in transaction", zap.Int32("school_id", schoolId))
+		err = tx.QueryRow(ctx, sql, schoolId).
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolIdResult, &schoolName, &schoolAddress)
+	} else {
+		dr.logger.Debug("Getting director by school_id without transaction", zap.Int32("school_id", schoolId))
+		err = dr.db.Pool.QueryRow(ctx, sql, schoolId).
+			Scan(&director.DirectorId, &director.UserId, &director.FirstName, &director.LastName, &director.Email,
+				&schoolIdResult, &schoolName, &schoolAddress)
+	}
+
+	if err != nil {
+		dr.logger.Error("Failed to get director by school_id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	director.School = &schools.School{
+		SchoolId:      schoolIdResult,
 		SchoolName:    schoolName,
 		SchoolAddress: schoolAddress,
 	}
