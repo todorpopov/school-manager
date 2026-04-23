@@ -13,12 +13,16 @@ export interface FieldConfig<T> {
     required?: boolean
     placeholder?: string
     options?: SelectOption[]       // for select / multiselect
+    minLength?: number
+    maxLength?: number
     /** Hide field from the table column list */
     hideInTable?: boolean
     /** Hide field from create/edit forms */
     hideInForm?: boolean
     /** Custom render for table cells */
     renderCell?: (value: T[keyof T], row: T) => React.ReactNode
+    /** Custom validator — return an error string or undefined */
+    validate?: (value: unknown) => string | undefined
 }
 
 export interface ResourceManagerProps<T extends { [key: string]: unknown }> {

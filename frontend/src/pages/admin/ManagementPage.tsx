@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import type { IconType } from 'react-icons'
-import { FaUsers, FaSchool, FaUserTie, FaUserGraduate, FaChalkboardTeacher, FaUserFriends, FaBookOpen } from 'react-icons/fa'
+import { FaSchool, FaUserTie, FaUserGraduate, FaChalkboardTeacher, FaUserFriends, FaBookOpen } from 'react-icons/fa'
 
 const RESOURCES: { label: string; description: string; path: string; Icon: IconType }[] = [
-    { label: 'Users', description: 'Manage system users and their roles', path: '/admin/management/users', Icon: FaUsers },
     { label: 'School', description: 'Manage school information and settings', path: '/admin/management/school', Icon: FaSchool },
     { label: 'Principal', description: 'Manage school principals', path: '/admin/management/principal', Icon: FaUserTie },
     { label: 'Students', description: 'Manage student records', path: '/admin/management/students', Icon: FaUserGraduate },
@@ -17,7 +16,7 @@ export default function ManagementPage() {
 
     return (
         <main className="max-w-5xl mx-auto px-4 py-10">
-            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-8">Management</h1>
+            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-8 text-center">Management</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {RESOURCES.map(({ path, label, description, Icon }) => (
                     <button

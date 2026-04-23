@@ -8,7 +8,6 @@ import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import StatisticsPage from './pages/admin/StatisticsPage'
 import ManagementPage from './pages/admin/ManagementPage'
-import UsersManagementPage from './pages/admin/management/UsersManagementPage'
 import SchoolManagementPage from './pages/admin/management/SchoolManagementPage'
 import PrincipalManagementPage from './pages/admin/management/PrincipalManagementPage'
 import StudentsManagementPage from './pages/admin/management/StudentsManagementPage'
@@ -41,11 +40,6 @@ function App() {
                         <Route path="/admin/management" element={
                             <ProtectedRoute allowedRoles={['ADMIN']}>
                                 <ManagementPage />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/admin/management/users" element={
-                            <ProtectedRoute allowedRoles={['ADMIN']}>
-                                <UsersManagementPage />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin/management/school" element={
