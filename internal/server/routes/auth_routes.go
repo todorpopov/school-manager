@@ -22,6 +22,13 @@ func RegisterAuthRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		),
 	)
 
+	s.Handle("POST /api/auth/register-admin",
+		middleware.Chain(
+			handlers.RegisterAdminHandler(writer, authSvc, logger),
+			logging,
+		),
+	)
+
 	s.Handle("POST /api/auth/login",
 		middleware.Chain(
 			handlers.LogUserInHandler(writer, authSvc, logger),

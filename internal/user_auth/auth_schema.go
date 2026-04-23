@@ -13,12 +13,25 @@ type RegisterRequest struct {
 	Roles     []string
 }
 
+type RegisterAdminRequest struct {
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	SystemAuthToken string `json:"system_auth_token"`
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 type AuthResponse struct {
-	SessionId string `json:"sessionId"`
+	UserId    int32    `json:"user_id"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Email     string   `json:"email"`
+	SessionId string   `json:"sessionId"`
+	Roles     []string `json:"roles"`
 }
 
 type AuthRequest struct {
@@ -43,6 +56,35 @@ func ValidateRegisterRequest(registerRequest *RegisterRequest) *exceptions.AppEr
 
 	if msg := domain_model.ValidatePassword(&registerRequest.Password, true); msg != "" {
 		messages["password"] = msg
+	}
+
+	if len(messages) > 0 {
+		return exceptions.NewValidationError("Validation failed during registration", messages)
+	}
+	return nil
+}
+
+func ValidateRegisterAdminRequest(registerAdminRequest *RegisterAdminRequest) *exceptions.AppError {
+	messages := map[string]string{}
+
+	if msg := domain_model.ValidateString(&registerAdminRequest.FirstName, 1, 255, true); msg != "" {
+		messages["first_name"] = msg
+	}
+
+	if msg := domain_model.ValidateString(&registerAdminRequest.LastName, 1, 255, true); msg != "" {
+		messages["last_name"] = msg
+	}
+
+	if msg := domain_model.ValidateEmail(&registerAdminRequest.Email, true); msg != "" {
+		messages["email"] = msg
+	}
+
+	if msg := domain_model.ValidatePassword(&registerAdminRequest.Password, true); msg != "" {
+		messages["password"] = msg
+	}
+
+	if msg := domain_model.ValidateString(&registerAdminRequest.SystemAuthToken, 1, 255, true); msg != "" {
+		messages["system_auth_token"] = msg
 	}
 
 	if len(messages) > 0 {

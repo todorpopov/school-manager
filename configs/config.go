@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	ApiPort string
+	ApiPort         string
+	SystemAuthToken string
 
 	DBUrl                   string
 	DBMinConnections        int32
@@ -21,6 +22,7 @@ type Config struct {
 func ParseConfig() *Config {
 	return &Config{
 		ApiPort:                 GetEnv("API_PORT", "8080"),
+		SystemAuthToken:         GetEnv("SYSTEM_AUTH_TOKEN", "admin"),
 		DBUrl:                   GetEnv("DB_URL", ""),
 		DBMinConnections:        GetEnvInt32("DB_MIN_CONNECTIONS", 5),
 		DBMaxConnections:        GetEnvInt32("DB_MAX_CONNECTIONS", 10),

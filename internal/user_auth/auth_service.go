@@ -12,21 +12,29 @@ import (
 
 type IAuthService interface {
 	RegisterUser(ctx context.Context, registerRequest *RegisterRequest) (*AuthResponse, *exceptions.AppError)
+	RegisterAdminUser(ctx context.Context, registerAdminReq *RegisterAdminRequest) (*AuthResponse, *exceptions.AppError)
 	LogUserIn(ctx context.Context, loginRequest *LoginRequest) (*AuthResponse, *exceptions.AppError)
 	IsRequestAuthorized(ctx context.Context, request *AuthRequest) (bool, *exceptions.AppError)
 }
 
 type AuthService struct {
-	bcryptSvc  internal.IBCryptService
-	userSvc    users.IUserService
-	sessionSvc sessions.ISessionService
+	bcryptSvc       internal.IBCryptService
+	userSvc         users.IUserService
+	sessionSvc      sessions.ISessionService
+	systemAuthToken string
 }
 
-func NewAuthService(bcryptSvc internal.IBCryptService, userSvc users.IUserService, sessionSvc sessions.ISessionService) *AuthService {
+func NewAuthService(
+	bcryptSvc internal.IBCryptService,
+	userSvc users.IUserService,
+	sessionSvc sessions.ISessionService,
+	systemAuthToken string,
+) *AuthService {
 	return &AuthService{
-		bcryptSvc:  bcryptSvc,
-		userSvc:    userSvc,
-		sessionSvc: sessionSvc,
+		bcryptSvc:       bcryptSvc,
+		userSvc:         userSvc,
+		sessionSvc:      sessionSvc,
+		systemAuthToken: systemAuthToken,
 	}
 }
 
@@ -53,7 +61,50 @@ func (as *AuthService) RegisterUser(ctx context.Context, registerRequest *Regist
 	}
 
 	resp := &AuthResponse{
+		UserId:    user.UserId,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
 		SessionId: session.SessionId,
+		Roles:     user.Roles,
+	}
+	return resp, nil
+}
+
+func (as *AuthService) RegisterAdminUser(ctx context.Context, registerAdminReq *RegisterAdminRequest) (*AuthResponse, *exceptions.AppError) {
+	if err := ValidateRegisterAdminRequest(registerAdminReq); err != nil {
+		return nil, err
+	}
+
+	if registerAdminReq.SystemAuthToken != as.systemAuthToken {
+		return nil, exceptions.NewAppError("UNAUTHORIZED", "Unauthorized", nil)
+	}
+
+	createUser := &users.CreateUser{
+		FirstName: registerAdminReq.FirstName,
+		LastName:  registerAdminReq.LastName,
+		Email:     registerAdminReq.Email,
+		Password:  registerAdminReq.Password,
+		Roles:     []string{"ADMIN"},
+	}
+
+	user, err := as.userSvc.CreateUser(ctx, nil, createUser)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := as.sessionSvc.CreateOrRenewSession(ctx, nil, user.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &AuthResponse{
+		UserId:    user.UserId,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		SessionId: session.SessionId,
+		Roles:     user.Roles,
 	}
 	return resp, nil
 }
@@ -78,7 +129,12 @@ func (as *AuthService) LogUserIn(ctx context.Context, loginRequest *LoginRequest
 	}
 
 	resp := &AuthResponse{
+		UserId:    user.UserId,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
 		SessionId: session.SessionId,
+		Roles:     user.Roles,
 	}
 	return resp, nil
 }

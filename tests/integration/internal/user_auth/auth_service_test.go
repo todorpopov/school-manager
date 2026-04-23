@@ -32,7 +32,8 @@ func (suite *AuthServiceSuite) SetupSuite() {
 	suite.usersSvc = users.NewUserService(suite.bcryptSvc, usersRepo, suite.txFactory)
 	sessionsRepo := sessions.NewSessionRepository(suite.Db, suite.Env.SessionExpiration, suite.Logger)
 	sessionsSvc := sessions.NewSessionService(sessionsRepo)
-	suite.authSvc = user_auth.NewAuthService(suite.bcryptSvc, suite.usersSvc, sessionsSvc)
+	adminCreds := user_auth.NewAdminCredentials(suite.Env)
+	suite.authSvc = user_auth.NewAuthService(suite.bcryptSvc, suite.usersSvc, sessionsSvc, adminCreds)
 	suite.rolesRepo = roles.NewRoleRepository(suite.Db, suite.Logger)
 }
 

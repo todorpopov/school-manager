@@ -110,7 +110,7 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	absenceRepo := absences.NewAbsenceRepository(db, logger)
 	absenceSvc := absences.NewAbsenceService(absenceRepo)
 
-	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc)
+	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc, env.SystemAuthToken)
 	return &Dependencies{
 		UserRepo:           usrRepo,
 		UserSvc:            usrSvc,
