@@ -2,13 +2,13 @@ import { useEffect } from 'react'
 import { ResourceManager } from '../../../components/ResourceManager'
 import type { FieldConfig } from '../../../components/ResourceManager'
 import { Toast } from '../../../components/Toast'
-import type { Director } from '../../../types/directors.ts'
-import { useGetDirectors, useCreateDirector, useUpdateDirector, useDeleteDirector } from '../../../hooks/useDirectors.ts'
+import type { Principals } from '../../../types/principals.ts'
+import { useGetPrincipals, useCreateDirector, useUpdateDirector, useDeleteDirector } from '../../../hooks/usePrincipals.ts'
 import { useToast } from '../../../hooks/useToast'
 
-const DIRECTOR_FIELDS: FieldConfig<Director>[] = [
-    { key: 'director_id', label: 'ID', type: 'number', hideInForm: true },
-    { key: 'user_id', label: 'User ID', type: 'number', hideInForm: true },
+const DIRECTOR_FIELDS: FieldConfig<Principals>[] = [
+    { key: 'director_id', label: 'ID', type: 'number', hideInForm: true, hideInTable: true },
+    { key: 'user_id', label: 'User ID', type: 'number', hideInForm: true, hideInTable: true },
     { key: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'First name' },
     { key: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Last name' },
     { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email' },
@@ -17,7 +17,7 @@ const DIRECTOR_FIELDS: FieldConfig<Director>[] = [
 ]
 
 export default function PrincipalManagementPage() {
-    const { data = [], isLoading, error } = useGetDirectors()
+    const { data = [], isLoading, error } = useGetPrincipals()
     const createMutation = useCreateDirector()
     const updateMutation = useUpdateDirector()
     const deleteMutation = useDeleteDirector()
@@ -46,7 +46,7 @@ export default function PrincipalManagementPage() {
     return (
         <main className="max-w-5xl mx-auto px-4 py-10">
             {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
-            <ResourceManager<Director>
+            <ResourceManager<Principals>
                 title="Principals"
                 data={data}
                 fields={DIRECTOR_FIELDS}

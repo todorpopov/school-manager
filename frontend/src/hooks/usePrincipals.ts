@@ -2,16 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import axiosInstance from '../utils/axiosConfig'
 import { parseApiError } from '../utils/parseApiError'
-import type { Director, CreateDirectorPayload, UpdateDirectorPayload } from '../types/directors'
+import type { Principals, CreatePrincipalPayload, UpdatePrincipalPayload } from '../types/principals.ts'
 
-const BASE = '/api'
+export const API_URL = import.meta.env.VITE_API_URL as string + "/api";
 
-export const useGetDirectors = ():
-    UseQueryResult<Director[], Error> => useQuery<Director[], Error>({
+export const useGetPrincipals = ():
+    UseQueryResult<Principals[], Error> => useQuery<Principals[], Error>({
         queryKey: ['directors'],
         queryFn: async () => {
             try {
-                const { data } = await axiosInstance.get<{ data: Director[] }>(`${BASE}/directors`)
+                const { data } = await axiosInstance.get<{ data: Principals[] }>(`${API_URL}/directors`)
                 return data.data ?? []
             } catch (err) {
                 throw new Error(parseApiError(err))
@@ -23,9 +23,9 @@ export const useGetDirectors = ():
 export const useCreateDirector = () => {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async (payload: CreateDirectorPayload) => {
+        mutationFn: async (payload: CreatePrincipalPayload) => {
             try {
-                const { data } = await axiosInstance.post<{ data: Director }>(`${BASE}/director`, payload)
+                const { data } = await axiosInstance.post<{ data: Principals }>(`${API_URL}/director`, payload)
                 return data.data
             } catch (err) {
                 throw new Error(parseApiError(err))
@@ -38,9 +38,9 @@ export const useCreateDirector = () => {
 export const useUpdateDirector = () => {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async ({ id, payload }: { id: number; payload: UpdateDirectorPayload }) => {
+        mutationFn: async ({ id, payload }: { id: number; payload: UpdatePrincipalPayload }) => {
             try {
-                const { data } = await axiosInstance.put<{ data: Director }>(`${BASE}/director/${id}`, payload)
+                const { data } = await axiosInstance.put<{ data: Principals }>(`${API_URL}/director/${id}`, payload)
                 return data.data
             } catch (err) {
                 throw new Error(parseApiError(err))
@@ -55,7 +55,7 @@ export const useDeleteDirector = () => {
     return useMutation({
         mutationFn: async (id: number) => {
             try {
-                await axiosInstance.delete(`${BASE}/director/${id}`)
+                await axiosInstance.delete(`${API_URL}/director/${id}`)
             } catch (err) {
                 throw new Error(parseApiError(err))
             }

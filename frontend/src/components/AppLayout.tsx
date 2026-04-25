@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: 'Administrator',
-    DIRECTOR: 'Director',
+    DIRECTOR: 'Principal',
     TEACHER: 'Teacher',
     PARENT: 'Parent',
     STUDENT: 'Student',
