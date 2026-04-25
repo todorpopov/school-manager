@@ -11,6 +11,7 @@ interface ResourceFormProps<T extends { [key: string]: unknown }> {
     onCancel: () => void
     submitLabel: string
     isLoading: boolean
+    isEdit?: boolean
 }
 
 function getDefaultValues<T extends { [key: string]: unknown }>(
@@ -41,8 +42,9 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
     onCancel,
     submitLabel,
     isLoading,
+    isEdit = false,
 }: ResourceFormProps<T>) {
-    const visibleFields = fields.filter((f) => !f.hideInForm)
+    const visibleFields = fields.filter((f) => !f.hideInForm && !(isEdit && f.hideInEditForm))
     const [values, setValues] = useState<Partial<T>>(() => getDefaultValues(visibleFields, initialValues))
     const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({})
     const [submitting, setSubmitting] = useState(false)
@@ -50,7 +52,6 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
     useEffect(() => {
         setValues(getDefaultValues(visibleFields, initialValues))
         setErrors({})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialValues])
 
     const validate = (): boolean => {

@@ -102,6 +102,7 @@ func UpdateTeacherHandler(hw *writer.HttpWriter, teacherSvc teachers.ITeacherSer
 
 		updateTeacher := &teachers.UpdateTeacher{
 			TeacherId: int32(teacherId),
+			SchoolId:  request.SchoolId,
 			FirstName: request.FirstName,
 			LastName:  request.LastName,
 			Email:     request.Email,

@@ -26,12 +26,14 @@ type CreateTeacher struct {
 
 type UpdateTeacher struct {
 	TeacherId int32
+	SchoolId  int32  `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 }
 
 type UpdateTeacherRequest struct {
+	SchoolId  int32  `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
@@ -80,6 +82,11 @@ func ValidateUpdateTeacher(updateTeacher *UpdateTeacher) *exceptions.AppError {
 	msg = domain_model.ValidateId(updateTeacher.TeacherId)
 	if msg != "" {
 		messages["teacher_id"] = msg
+	}
+
+	msg = domain_model.ValidateId(updateTeacher.SchoolId)
+	if msg != "" {
+		messages["school_id"] = msg
 	}
 
 	msg = domain_model.ValidateString(&updateTeacher.FirstName, 1, 255, true)

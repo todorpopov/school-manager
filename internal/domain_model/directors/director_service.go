@@ -220,6 +220,14 @@ func (ds *DirectorService) UpdateDirector(ctx context.Context, tx pgx.Tx, update
 		return nil, userErr
 	}
 
+	if updateDirector.SchoolId != 0 {
+		schoolErr := ds.directorRepo.UpdateDirectorSchool(ctx, txToUse, updateDirector.DirectorId, updateDirector.SchoolId)
+		if schoolErr != nil {
+			txErr = schoolErr
+			return nil, schoolErr
+		}
+	}
+
 	if tx == nil {
 		commitErr := ds.txFactory.CommitOrRollback(ctx, txToUse, nil)
 		if commitErr != nil {
@@ -229,14 +237,11 @@ func (ds *DirectorService) UpdateDirector(ctx context.Context, tx pgx.Tx, update
 		committed = true
 	}
 
-	updatedDirector := &Director{
-		DirectorId: director.DirectorId,
-		UserId:     user.UserId,
-		FirstName:  user.FirstName,
-		LastName:   user.LastName,
-		Email:      user.Email,
-		Roles:      user.Roles,
+	updatedDirector, getErr := ds.directorRepo.GetDirectorById(ctx, nil, updateDirector.DirectorId)
+	if getErr != nil {
+		return nil, getErr
 	}
+	updatedDirector.Roles = user.Roles
 
 	return updatedDirector, nil
 }

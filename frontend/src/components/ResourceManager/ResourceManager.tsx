@@ -145,6 +145,7 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                     onCancel={backToList}
                     submitLabel="Save changes"
                     isLoading={isLoading}
+                    isEdit={true}
                 />
             )}
             {mode === 'delete' && selected && (

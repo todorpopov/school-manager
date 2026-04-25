@@ -4,10 +4,10 @@ import axiosInstance from '../utils/axiosConfig'
 import { parseApiError } from '../utils/parseApiError'
 import type { Principals, CreatePrincipalPayload, UpdatePrincipalPayload } from '../types/principals.ts'
 
-export const API_URL = import.meta.env.VITE_API_URL as string + "/api";
+const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
-export const useGetPrincipals = ():
-    UseQueryResult<Principals[], Error> => useQuery<Principals[], Error>({
+export const useGetDirectors = (): UseQueryResult<Principals[], Error> =>
+    useQuery<Principals[], Error>({
         queryKey: ['directors'],
         queryFn: async () => {
             try {
@@ -63,5 +63,3 @@ export const useDeleteDirector = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['directors'] }),
     })
 }
-
-

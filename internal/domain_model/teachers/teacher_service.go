@@ -208,6 +208,14 @@ func (ts *TeacherService) UpdateTeacher(ctx context.Context, tx pgx.Tx, updateTe
 		return nil, userErr
 	}
 
+	if updateTeacher.SchoolId != 0 {
+		schoolErr := ts.teacherRepo.UpdateTeacherSchool(ctx, txToUse, updateTeacher.TeacherId, updateTeacher.SchoolId)
+		if schoolErr != nil {
+			txErr = schoolErr
+			return nil, schoolErr
+		}
+	}
+
 	if tx == nil {
 		commitErr := ts.txFactory.CommitOrRollback(ctx, txToUse, nil)
 		if commitErr != nil {
@@ -217,14 +225,11 @@ func (ts *TeacherService) UpdateTeacher(ctx context.Context, tx pgx.Tx, updateTe
 		committed = true
 	}
 
-	updatedTeacher := &Teacher{
-		TeacherId: teacher.TeacherId,
-		UserId:    user.UserId,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		Roles:     user.Roles,
+	updatedTeacher, getErr := ts.teacherRepo.GetTeacherById(ctx, nil, updateTeacher.TeacherId)
+	if getErr != nil {
+		return nil, getErr
 	}
+	updatedTeacher.Roles = user.Roles
 
 	return updatedTeacher, nil
 }

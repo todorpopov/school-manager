@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { ResourceManager } from '../../../components/ResourceManager'
 import type { FieldConfig } from '../../../components/ResourceManager'
 import { Toast } from '../../../components/Toast'
@@ -12,7 +12,7 @@ const SCHOOL_FIELDS: FieldConfig<School>[] = [
     { key: 'school_address', label: 'Address', type: 'text', required: true, placeholder: 'School address' },
 ]
 
-export default function SchoolManagementPage() {
+const SchoolManagementPage: React.FC = () => {
     const { data = [], isLoading, error } = useGetSchools()
     const createMutation = useCreateSchool()
     const updateMutation = useUpdateSchool()
@@ -67,3 +67,5 @@ export default function SchoolManagementPage() {
         </main>
     )
 }
+
+export default SchoolManagementPage

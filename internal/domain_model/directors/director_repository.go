@@ -18,6 +18,7 @@ type IDirectorRepository interface {
 	GetDirectorByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Director, *exceptions.AppError)
 	GetDirectorBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) (*Director, *exceptions.AppError)
 	GetDirectors(ctx context.Context, tx pgx.Tx) ([]Director, *exceptions.AppError)
+	UpdateDirectorSchool(ctx context.Context, tx pgx.Tx, directorId int32, schoolId int32) *exceptions.AppError
 	DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError
 }
 
@@ -253,6 +254,21 @@ func (dr *DirectorRepository) GetDirectors(ctx context.Context, tx pgx.Tx) ([]Di
 	}
 
 	return directors, nil
+}
+
+func (dr *DirectorRepository) UpdateDirectorSchool(ctx context.Context, tx pgx.Tx, directorId int32, schoolId int32) *exceptions.AppError {
+	sql := `UPDATE directors SET school_id = $1 WHERE director_id = $2;`
+	var err error
+	if tx != nil {
+		_, err = tx.Exec(ctx, sql, schoolId, directorId)
+	} else {
+		_, err = dr.db.Pool.Exec(ctx, sql, schoolId, directorId)
+	}
+	if err != nil {
+		dr.logger.Error("Failed to update director school", zap.Error(err))
+		return exceptions.PgErrorToAppError(err)
+	}
+	return nil
 }
 
 func (dr *DirectorRepository) DeleteDirector(ctx context.Context, tx pgx.Tx, directorId int32) *exceptions.AppError {

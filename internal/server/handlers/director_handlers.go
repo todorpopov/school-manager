@@ -102,6 +102,7 @@ func UpdateDirectorHandler(hw *writer.HttpWriter, directorSvc directors.IDirecto
 
 		updateDirector := &directors.UpdateDirector{
 			DirectorId: int32(directorId),
+			SchoolId:   request.SchoolId,
 			FirstName:  request.FirstName,
 			LastName:   request.LastName,
 			Email:      request.Email,

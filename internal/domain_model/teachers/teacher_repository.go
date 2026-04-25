@@ -17,6 +17,7 @@ type ITeacherRepository interface {
 	GetTeacherById(ctx context.Context, tx pgx.Tx, teacherId int32) (*Teacher, *exceptions.AppError)
 	GetTeacherByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError)
 	GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError)
+	UpdateTeacherSchool(ctx context.Context, tx pgx.Tx, teacherId int32, schoolId int32) *exceptions.AppError
 	DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherId int32) *exceptions.AppError
 }
 
@@ -207,6 +208,21 @@ func (tr *TeacherRepository) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teac
 	}
 
 	return teachers, nil
+}
+
+func (tr *TeacherRepository) UpdateTeacherSchool(ctx context.Context, tx pgx.Tx, teacherId int32, schoolId int32) *exceptions.AppError {
+	sql := `UPDATE teachers SET school_id = $1 WHERE teacher_id = $2;`
+	var err error
+	if tx != nil {
+		_, err = tx.Exec(ctx, sql, schoolId, teacherId)
+	} else {
+		_, err = tr.db.Pool.Exec(ctx, sql, schoolId, teacherId)
+	}
+	if err != nil {
+		tr.logger.Error("Failed to update teacher school", zap.Error(err))
+		return exceptions.PgErrorToAppError(err)
+	}
+	return nil
 }
 
 func (tr *TeacherRepository) DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherId int32) *exceptions.AppError {

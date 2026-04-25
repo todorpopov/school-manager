@@ -12,13 +12,15 @@ export interface FieldConfig<T> {
     type: FieldType
     required?: boolean
     placeholder?: string
-    options?: SelectOption[]       // for select / multiselect
+    options?: SelectOption[]
     minLength?: number
     maxLength?: number
     /** Hide field from the table column list */
     hideInTable?: boolean
     /** Hide field from create/edit forms */
     hideInForm?: boolean
+    /** Hide field from the edit form only (still shown on create) */
+    hideInEditForm?: boolean
     /** Custom render for table cells */
     renderCell?: (value: T[keyof T], row: T) => React.ReactNode
     /** Custom validator — return an error string or undefined */
