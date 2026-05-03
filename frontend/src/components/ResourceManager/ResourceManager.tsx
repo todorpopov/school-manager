@@ -15,6 +15,7 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
     onDelete,
     isLoading = false,
     error = null,
+    readOnly = false,
 }: ResourceManagerProps<T>) {
     const [mode, setMode] = useState<Mode>('list')
     const [selected, setSelected] = useState<T | null>(null)
@@ -66,7 +67,7 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                     )}
                     {modeTitle}
                 </h2>
-                {mode === 'list' && (
+                {mode === 'list' && !readOnly && (
                     <button
                         onClick={openCreate}
                         className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-md cursor-pointer border-none transition-colors"
@@ -99,9 +100,11 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                                             {f.label}
                                         </th>
                                     ))}
+                                    {!readOnly && (
                                     <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
                                         Actions
                                     </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -116,7 +119,8 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                                                         : String(row[f.key] ?? '')}
                                             </td>
                                         ))}
-                                        <td className="px-4 py-3">
+                                         <td className="px-4 py-3">
+                                            {!readOnly && (
                                             <div className="flex gap-2 justify-end">
                                                 <button
                                                     onClick={() => openEdit(row)}
@@ -131,6 +135,7 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                                                     Delete
                                                 </button>
                                             </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

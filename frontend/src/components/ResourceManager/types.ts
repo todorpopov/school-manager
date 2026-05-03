@@ -46,5 +46,7 @@ export interface ResourceManagerProps<T extends { [key: string]: unknown }> {
     isLoading?: boolean
     /** Optional error message */
     error?: string | null
+    /** Hide all create/edit/delete actions (view-only mode) */
+    readOnly?: boolean
 }
 

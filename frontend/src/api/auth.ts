@@ -4,14 +4,44 @@ import type { AuthResponse } from '../types/auth'
 
 export async function apiLogin(email: string, password: string): Promise<AuthResponse> {
     console.log(email, password);
+
+    if (email.startsWith("a")) {
+        return {
+            sessionId: 'mock-session-id',
+            roles: ['ADMIN'],
+            firstName: 'Ivan',
+            lastName: 'Petrov',
+            email,
+        }
+    }
+
+    if (email.startsWith("p")) {
+        return {
+            sessionId: 'mock-session-id',
+            roles: ['PARENT'],
+            firstName: 'Ivan',
+            lastName: 'Petrov',
+            email,
+        }
+    }
+
+    if (email.startsWith("t")) {
+        return {
+            sessionId: 'mock-session-id',
+            roles: ['TEACHER'],
+            firstName: 'Ivan',
+            lastName: 'Petrov',
+            email,
+        }
+    }
+
     return {
         sessionId: 'mock-session-id',
-        roles: ['ADMIN'],
+        roles: ['DIRECTOR'],
         firstName: 'Ivan',
         lastName: 'Petrov',
         email,
     }
-
     // const res = await fetch(`${BASE}/auth/login`, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
