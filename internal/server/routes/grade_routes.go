@@ -17,7 +17,14 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 	logging := middleware.Logging(logger)
 	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
 
-	s.Handle("POST /api/grade",
+        s.Handle("POST /api/grades/bulk",
+                middleware.Chain(
+                        handlers.BulkCreateGradesHandler(writer, gradeSvc, logger),
+                        logging,
+                ),
+        )
+
+        s.Handle("POST /api/grade",
 		middleware.Chain(
 			handlers.CreateGradeHandler(writer, gradeSvc, logger),
 			logging,

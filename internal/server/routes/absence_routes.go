@@ -17,7 +17,14 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	logging := middleware.Logging(logger)
 	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
 
-	s.Handle("POST /api/absence",
+        s.Handle("POST /api/absences/bulk",
+                middleware.Chain(
+                        handlers.BulkCreateAbsencesHandler(writer, absenceSvc, logger),
+                        logging,
+                ),
+        )
+
+        s.Handle("POST /api/absence",
 		middleware.Chain(
 			handlers.CreateAbsenceHandler(writer, absenceSvc, logger),
 			logging,

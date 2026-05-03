@@ -11,6 +11,27 @@ import (
 	"go.uber.org/zap"
 )
 
+func BulkCreateGradesHandler(hw *writer.HttpWriter, gradeSvc grades.IGradeService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		request, decodeErr := decodeRequestBodyInto[grades.BulkCreateGrades](r, logger)
+		if decodeErr != nil {
+			hw.WriteError(w, decodeErr)
+			return
+		}
+
+		result, err := gradeSvc.BulkCreateGrades(r.Context(), nil, &request)
+		if err != nil {
+			logger.Error("Failed to bulk create grades", zap.Error(err))
+			hw.WriteError(w, err)
+			return
+		}
+
+		logger.Info("Grades bulk created successfully", zap.Int("count", len(result)))
+		resp := internal.NewApiResponse(false, "Grades created successfully", result)
+		hw.WriteResponse(w, http.StatusCreated, resp)
+	}
+}
+
 func CreateGradeHandler(hw *writer.HttpWriter, gradeSvc grades.IGradeService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, decodeErr := decodeRequestBodyInto[grades.CreateGrade](r, logger)

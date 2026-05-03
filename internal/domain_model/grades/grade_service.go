@@ -10,6 +10,7 @@ import (
 
 type IGradeService interface {
 	CreateGrade(ctx context.Context, tx pgx.Tx, createGrade *CreateGrade) (*Grade, *exceptions.AppError)
+	BulkCreateGrades(ctx context.Context, tx pgx.Tx, payload *BulkCreateGrades) ([]Grade, *exceptions.AppError)
 	GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError)
 	GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError)
 	DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError
@@ -30,6 +31,19 @@ func (gs *GradeService) CreateGrade(ctx context.Context, tx pgx.Tx, createGrade 
 	}
 
 	return gs.gradeRepo.CreateGrade(ctx, tx, createGrade)
+}
+
+func (gs *GradeService) BulkCreateGrades(ctx context.Context, tx pgx.Tx, payload *BulkCreateGrades) ([]Grade, *exceptions.AppError) {
+	if len(payload.Entries) == 0 {
+		return nil, exceptions.NewValidationError("No entries provided", map[string]string{"entries": "must not be empty"})
+	}
+	for i, entry := range payload.Entries {
+		if err := ValidateCreateGrade(&entry); err != nil {
+			return nil, err
+		}
+		payload.Entries[i] = entry
+	}
+	return gs.gradeRepo.BulkCreateGrades(ctx, tx, payload.Entries)
 }
 
 func (gs *GradeService) GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError) {

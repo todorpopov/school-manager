@@ -10,6 +10,7 @@ import (
 
 type IAbsenceService interface {
 	CreateAbsence(ctx context.Context, tx pgx.Tx, createAbsence *CreateAbsence) (*Absence, *exceptions.AppError)
+	BulkCreateAbsences(ctx context.Context, tx pgx.Tx, payload *BulkCreateAbsences) ([]Absence, *exceptions.AppError)
 	GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError)
 	GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError)
 	DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
@@ -30,6 +31,19 @@ func (as *AbsenceService) CreateAbsence(ctx context.Context, tx pgx.Tx, createAb
 	}
 
 	return as.absenceRepo.CreateAbsence(ctx, tx, createAbsence)
+}
+
+func (as *AbsenceService) BulkCreateAbsences(ctx context.Context, tx pgx.Tx, payload *BulkCreateAbsences) ([]Absence, *exceptions.AppError) {
+	if len(payload.Entries) == 0 {
+		return nil, exceptions.NewValidationError("No entries provided", map[string]string{"entries": "must not be empty"})
+	}
+	for i, entry := range payload.Entries {
+		if err := ValidateCreateAbsence(&entry); err != nil {
+			return nil, err
+		}
+		payload.Entries[i] = entry
+	}
+	return as.absenceRepo.BulkCreateAbsences(ctx, tx, payload.Entries)
 }
 
 func (as *AbsenceService) GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError) {

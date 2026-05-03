@@ -24,6 +24,10 @@ type CreateGrade struct {
 	GradeDate    string  `json:"grade_date"`
 }
 
+type BulkCreateGrades struct {
+	Entries []CreateGrade `json:"entries"`
+}
+
 func ValidateCreateGrade(createGrade *CreateGrade) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string

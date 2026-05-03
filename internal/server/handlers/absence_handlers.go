@@ -11,6 +11,27 @@ import (
 	"go.uber.org/zap"
 )
 
+func BulkCreateAbsencesHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		request, decodeErr := decodeRequestBodyInto[absences.BulkCreateAbsences](r, logger)
+		if decodeErr != nil {
+			hw.WriteError(w, decodeErr)
+			return
+		}
+
+		result, err := absenceSvc.BulkCreateAbsences(r.Context(), nil, &request)
+		if err != nil {
+			logger.Error("Failed to bulk create absences", zap.Error(err))
+			hw.WriteError(w, err)
+			return
+		}
+
+		logger.Info("Absences bulk created successfully", zap.Int("count", len(result)))
+		resp := internal.NewApiResponse(false, "Absences created successfully", result)
+		hw.WriteResponse(w, http.StatusCreated, resp)
+	}
+}
+
 func CreateAbsenceHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, decodeErr := decodeRequestBodyInto[absences.CreateAbsence](r, logger)

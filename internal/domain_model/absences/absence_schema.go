@@ -24,6 +24,10 @@ type CreateAbsence struct {
 	IsExcused    bool   `json:"is_excused"`
 }
 
+type BulkCreateAbsences struct {
+	Entries []CreateAbsence `json:"entries"`
+}
+
 func ValidateCreateAbsence(createAbsence *CreateAbsence) *exceptions.AppError {
 	messages := map[string]string{}
 	var msg string

@@ -19,6 +19,7 @@ import (
 
 type IGradeRepository interface {
 	CreateGrade(ctx context.Context, tx pgx.Tx, createGrade *CreateGrade) (*Grade, *exceptions.AppError)
+	BulkCreateGrades(ctx context.Context, tx pgx.Tx, entries []CreateGrade) ([]Grade, *exceptions.AppError)
 	GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError)
 	GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError)
 	DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError
@@ -61,13 +62,25 @@ func (gr *GradeRepository) CreateGrade(ctx context.Context, tx pgx.Tx, createGra
 	return gr.GetGradeById(ctx, tx, gradeId)
 }
 
+func (gr *GradeRepository) BulkCreateGrades(ctx context.Context, tx pgx.Tx, entries []CreateGrade) ([]Grade, *exceptions.AppError) {
+	var result []Grade
+	for _, entry := range entries {
+		grade, err := gr.CreateGrade(ctx, tx, &entry)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *grade)
+	}
+	return result, nil
+}
+
 func (gr *GradeRepository) GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError) {
 	if msg := domain_model.ValidateId(gradeId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid grade ID", map[string]string{"grade_id": msg})
 	}
 
 	sqlStmt := `
-		SELECT 
+		SELECT
 			g.grade_id,
 			g.grade_value,
 			g.grade_date,
@@ -155,7 +168,7 @@ func (gr *GradeRepository) GetGradeById(ctx context.Context, tx pgx.Tx, gradeId 
 
 func (gr *GradeRepository) GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError) {
 	sqlStmt := `
-		SELECT 
+		SELECT
 			g.grade_id,
 			g.grade_value,
 			g.grade_date,

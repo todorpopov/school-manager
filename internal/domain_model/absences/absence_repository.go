@@ -19,6 +19,7 @@ import (
 
 type IAbsenceRepository interface {
 	CreateAbsence(ctx context.Context, tx pgx.Tx, createAbsence *CreateAbsence) (*Absence, *exceptions.AppError)
+	BulkCreateAbsences(ctx context.Context, tx pgx.Tx, entries []CreateAbsence) ([]Absence, *exceptions.AppError)
 	GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError)
 	GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError)
 	DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
@@ -61,13 +62,25 @@ func (ar *AbsenceRepository) CreateAbsence(ctx context.Context, tx pgx.Tx, creat
 	return ar.GetAbsenceById(ctx, tx, absenceId)
 }
 
+func (ar *AbsenceRepository) BulkCreateAbsences(ctx context.Context, tx pgx.Tx, entries []CreateAbsence) ([]Absence, *exceptions.AppError) {
+	var result []Absence
+	for _, entry := range entries {
+		absence, err := ar.CreateAbsence(ctx, tx, &entry)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *absence)
+	}
+	return result, nil
+}
+
 func (ar *AbsenceRepository) GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError) {
 	if msg := domain_model.ValidateId(absenceId); msg != "" {
 		return nil, exceptions.NewValidationError("Invalid absence ID", map[string]string{"absence_id": msg})
 	}
 
 	sqlStmt := `
-		SELECT 
+		SELECT
 			a.absence_id,
 			a.absence_date,
 			a.is_excused,
@@ -155,7 +168,7 @@ func (ar *AbsenceRepository) GetAbsenceById(ctx context.Context, tx pgx.Tx, abse
 
 func (ar *AbsenceRepository) GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError) {
 	sqlStmt := `
-		SELECT 
+		SELECT
 			a.absence_id,
 			a.absence_date,
 			a.is_excused,
