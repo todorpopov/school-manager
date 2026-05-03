@@ -208,8 +208,15 @@ func (ss *StudentService) UpdateStudent(ctx context.Context, tx pgx.Tx, updateSt
 		txErr = userErr
 		return nil, userErr
 	}
-	if student.Class != nil && updateStudent.ClassId != nil {
-		if student.Class.ClassId != *updateStudent.ClassId {
+	if updateStudent.SchoolId != nil && student.School.SchoolId != *updateStudent.SchoolId {
+		updateSchoolErr := ss.studentRepo.UpdateStudentSchool(ctx, txToUse, updateStudent.StudentId, *updateStudent.SchoolId)
+		if updateSchoolErr != nil {
+			txErr = updateSchoolErr
+			return nil, updateSchoolErr
+		}
+	}
+
+	if student.Class != nil && updateStudent.ClassId != nil {		if student.Class.ClassId != *updateStudent.ClassId {
 			updateClassErr := ss.studentRepo.UpdateStudentClass(ctx, txToUse, updateStudent.StudentId, updateStudent.ClassId)
 			if updateClassErr != nil {
 				txErr = updateClassErr

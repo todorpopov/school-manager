@@ -57,10 +57,14 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
     const validate = (): boolean => {
         const newErrors: Partial<Record<keyof T, string>> = {}
         visibleFields.forEach((f) => {
+            const val = values[f.key]
             if (f.required) {
-                const val = values[f.key]
                 const isEmpty = val === undefined || val === '' || (Array.isArray(val) && val.length === 0)
-                if (isEmpty) newErrors[f.key] = `${f.label} is required`
+                if (isEmpty) { newErrors[f.key] = `${f.label} is required`; return }
+            }
+            if (f.validate && val !== undefined && val !== '') {
+                const msg = f.validate(val)
+                if (msg) newErrors[f.key] = msg
             }
         })
         setErrors(newErrors)

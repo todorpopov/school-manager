@@ -6,6 +6,7 @@ import type { Principals } from '../../../types/principals.ts'
 import { useGetDirectors, useCreateDirector, useUpdateDirector, useDeleteDirector } from '../../../hooks/usePrincipals.ts'
 import { useGetSchools } from '../../../hooks/useSchools.ts'
 import { useToast } from '../../../hooks/useToast'
+import { validateName, validateEmail, validatePassword } from '../../../utils/validators'
 
 const PrincipalManagementPage: React.FC = () => {
     const { data = [], isLoading, error } = useGetDirectors()
@@ -31,10 +32,10 @@ const PrincipalManagementPage: React.FC = () => {
             },
         },
         { key: 'school_id', label: 'School', type: 'select', required: true, options: schoolOptions, hideInTable: true },
-        { key: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'First name' },
-        { key: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Last name' },
-        { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email' },
-        { key: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Password', hideInTable: true },
+        { key: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'First name', validate: validateName },
+        { key: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Last name', validate: validateName },
+        { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email', validate: validateEmail },
+        { key: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Password', hideInTable: true, validate: validatePassword },
         { key: 'roles', label: 'Roles', type: 'text', hideInForm: true, hideInTable: true },
     ]
 

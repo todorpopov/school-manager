@@ -29,6 +29,7 @@ type CreateStudent struct {
 
 type UpdateStudent struct {
 	StudentId int32
+	SchoolId  *int32 `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
@@ -36,6 +37,7 @@ type UpdateStudent struct {
 }
 
 type UpdateStudentRequest struct {
+	SchoolId  *int32 `json:"school_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`

@@ -3,7 +3,7 @@ import type { ResourceManagerProps } from './types'
 import { ResourceForm } from './ResourceForm'
 import { ConfirmDelete } from './ConfirmDelete'
 
-type Mode = 'list' | 'create' | 'edit' | 'delete'
+type Mode = 'list' | 'create' | 'edit'
 
 export function ResourceManager<T extends { [key: string]: unknown }>({
     title,
@@ -18,31 +18,42 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
 }: ResourceManagerProps<T>) {
     const [mode, setMode] = useState<Mode>('list')
     const [selected, setSelected] = useState<T | null>(null)
+    const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
 
     const tableFields = fields.filter((f) => !f.hideInTable)
 
-    const openCreate = () => { setSelected(null); setMode('create') }
-    const openEdit   = (row: T) => { setSelected(row); setMode('edit') }
-    const openDelete = (row: T) => { setSelected(row); setMode('delete') }
-    const backToList = () => { setSelected(null); setMode('list') }
+    const openCreate  = () => { setSelected(null); setMode('create') }
+    const openEdit    = (row: T) => { setSelected(row); setMode('edit') }
+    const openDelete  = (row: T) => setDeleteTarget(row)
+    const closeDelete = () => setDeleteTarget(null)
+    const backToList  = () => { setSelected(null); setMode('list') }
 
     const handleCreate = async (values: Partial<T>) => { await onCreate(values); backToList() }
     const handleUpdate = async (values: Partial<T>) => { if (!selected) return; await onUpdate(selected[idKey], values); backToList() }
-    const handleDelete = async () => { if (!selected) return; await onDelete(selected[idKey]); backToList() }
+    const handleDelete = async () => { if (!deleteTarget) return; await onDelete(deleteTarget[idKey]); closeDelete() }
 
     const selectedLabel = selected
-        ? String(selected[fields.find((f) => f.type === 'text' || f.type === 'email')?.key ?? idKey] ?? selected[idKey])
+        ? (() => {
+            const nameField = fields.find((f) => (f.type === 'text' || f.type === 'email') && !f.hideInTable)
+            const raw = nameField ? selected[nameField.key] : selected[idKey]
+            return typeof raw === 'object' || raw === undefined ? String(selected[idKey]) : String(raw)
+        })()
         : ''
 
     const modeTitle = {
         list:   title,
         create: `New ${title.replace(/s$/, '')}`,
         edit:   `Edit — ${selectedLabel}`,
-        delete: `Delete — ${selectedLabel}`,
     }[mode]
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            {deleteTarget && (
+                <ConfirmDelete
+                    onConfirm={handleDelete}
+                    onCancel={closeDelete}
+                />
+            )}
             <div className="flex items-center justify-between px-5 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                 <h2 className="flex items-center gap-2 m-0 text-lg font-semibold text-slate-800 dark:text-slate-100">
                     {mode !== 'list' && (
@@ -146,13 +157,6 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                     submitLabel="Save changes"
                     isLoading={isLoading}
                     isEdit={true}
-                />
-            )}
-            {mode === 'delete' && selected && (
-                <ConfirmDelete
-                    label={selectedLabel}
-                    onConfirm={handleDelete}
-                    onCancel={backToList}
                 />
             )}
         </div>

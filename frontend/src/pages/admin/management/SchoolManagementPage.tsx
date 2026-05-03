@@ -5,11 +5,12 @@ import { Toast } from '../../../components/Toast'
 import type { School } from '../../../types/schools.ts'
 import { useGetSchools, useCreateSchool, useUpdateSchool, useDeleteSchool } from '../../../hooks/useSchools.ts'
 import { useToast } from '../../../hooks/useToast'
+import { validateText } from '../../../utils/validators'
 
 const SCHOOL_FIELDS: FieldConfig<School>[] = [
     { key: 'school_id', label: 'ID', type: 'number', hideInForm: true, hideInTable: true },
-    { key: 'school_name', label: 'Name', type: 'text', required: true, placeholder: 'School name' },
-    { key: 'school_address', label: 'Address', type: 'text', required: true, placeholder: 'School address' },
+    { key: 'school_name', label: 'Name', type: 'text', required: true, placeholder: 'School name', validate: validateText },
+    { key: 'school_address', label: 'Address', type: 'text', required: true, placeholder: 'School address', validate: validateText },
 ]
 
 const SchoolManagementPage: React.FC = () => {

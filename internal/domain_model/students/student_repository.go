@@ -19,6 +19,7 @@ type IStudentRepository interface {
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
 	UpdateStudentClass(ctx context.Context, tx pgx.Tx, studentId int32, classId *int32) *exceptions.AppError
+	UpdateStudentSchool(ctx context.Context, tx pgx.Tx, studentId int32, schoolId int32) *exceptions.AppError
 	DeleteStudent(ctx context.Context, tx pgx.Tx, studentId int32) *exceptions.AppError
 }
 
@@ -75,7 +76,7 @@ func (sr *StudentRepository) GetStudentById(ctx context.Context, tx pgx.Tx, stud
 	}
 
 	sql := `
-		SELECT 
+		SELECT
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
 			sch.school_id, sch.school_name, sch.school_address,
@@ -139,7 +140,7 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 	}
 
 	sql := `
-		SELECT 
+		SELECT
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
 			sch.school_id, sch.school_name, sch.school_address,
@@ -199,7 +200,7 @@ func (sr *StudentRepository) GetStudentByUserId(ctx context.Context, tx pgx.Tx, 
 
 func (sr *StudentRepository) GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError) {
 	sql := `
-		SELECT 
+		SELECT
 			s.student_id, s.user_id, s.class_id,
 			u.first_name, u.last_name, u.email,
 			sch.school_id, sch.school_name, sch.school_address,
@@ -302,6 +303,38 @@ func (sr *StudentRepository) UpdateStudentClass(ctx context.Context, tx pgx.Tx, 
 
 	if cmdTag.RowsAffected() == 0 {
 		sr.logger.Error("Failed to update student class - student not found", zap.Int32("student_id", studentId))
+		return exceptions.NewNotFoundError("Student not found")
+	}
+
+	return nil
+}
+
+func (sr *StudentRepository) UpdateStudentSchool(ctx context.Context, tx pgx.Tx, studentId int32, schoolId int32) *exceptions.AppError {
+	if msg := domain_model.ValidateId(studentId); msg != "" {
+		return exceptions.NewValidationError("Invalid student ID", map[string]string{"student_id": msg})
+	}
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
+	sql := `UPDATE students SET school_id = $1 WHERE student_id = $2;`
+
+	var err error
+	var cmdTag pgconn.CommandTag
+	if tx != nil {
+		sr.logger.Debug("Updating student school in transaction", zap.Int32("student_id", studentId))
+		cmdTag, err = tx.Exec(ctx, sql, schoolId, studentId)
+	} else {
+		sr.logger.Debug("Updating student school without transaction", zap.Int32("student_id", studentId))
+		cmdTag, err = sr.db.Pool.Exec(ctx, sql, schoolId, studentId)
+	}
+
+	if err != nil {
+		sr.logger.Error("Failed to update student school", zap.Error(err))
+		return exceptions.PgErrorToAppError(err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
 		return exceptions.NewNotFoundError("Student not found")
 	}
 

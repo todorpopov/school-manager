@@ -9,6 +9,7 @@ import { useGetSchools } from '../../../hooks/useSchools.ts'
 import { useGetSubjects } from '../../../hooks/useSubjects.ts'
 import { useToast } from '../../../hooks/useToast'
 import axiosInstance from '../../../utils/axiosConfig'
+import { validateName, validateEmail, validatePassword } from '../../../utils/validators'
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
@@ -62,10 +63,10 @@ const TeachersManagementPage: React.FC = () => {
             },
         },
         { key: 'school_id', label: 'School', type: 'select', required: true, options: schoolOptions, hideInTable: true },
-        { key: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'First name' },
-        { key: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Last name' },
-        { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email' },
-        { key: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Password', hideInTable: true },
+        { key: 'first_name', label: 'First Name', type: 'text', required: true, placeholder: 'First name', validate: validateName },
+        { key: 'last_name', label: 'Last Name', type: 'text', required: true, placeholder: 'Last name', validate: validateName },
+        { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email', validate: validateEmail },
+        { key: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Password', hideInTable: true, validate: validatePassword },
         { key: 'subject_ids', label: 'Subjects', type: 'multiselect', options: subjectOptions,
             renderCell: (_value, row) => {
                 const subjects = teacherSubjectsMap[(row as Teacher).teacher_id] ?? []

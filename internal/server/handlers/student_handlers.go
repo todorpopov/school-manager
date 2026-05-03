@@ -100,13 +100,14 @@ func UpdateStudentHandler(hw *writer.HttpWriter, studentSvc students.IStudentSer
 			return
 		}
 
-		updateStudent := &students.UpdateStudent{
-			StudentId: int32(studentId),
-			FirstName: request.FirstName,
-			LastName:  request.LastName,
-			Email:     request.Email,
-			ClassId:   request.ClassId,
-		}
+			updateStudent := &students.UpdateStudent{
+				StudentId: int32(studentId),
+				SchoolId:  request.SchoolId,
+				FirstName: request.FirstName,
+				LastName:  request.LastName,
+				Email:     request.Email,
+				ClassId:   request.ClassId,
+			}
 
 		student, updateErr := studentSvc.UpdateStudent(r.Context(), nil, updateStudent)
 		if updateErr != nil {
