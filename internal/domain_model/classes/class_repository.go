@@ -15,6 +15,7 @@ type IClassRepository interface {
 	CreateClass(ctx context.Context, tx pgx.Tx, createClass *CreateClass) (*Class, *exceptions.AppError)
 	GetClassById(ctx context.Context, tx pgx.Tx, classId int32) (*Class, *exceptions.AppError)
 	GetClasses(ctx context.Context, tx pgx.Tx) ([]Class, *exceptions.AppError)
+	GetClassesBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Class, *exceptions.AppError)
 	DeleteClass(ctx context.Context, tx pgx.Tx, classId int32) *exceptions.AppError
 }
 
@@ -29,9 +30,9 @@ func NewClassRepository(db *persistence.Database, logger *zap.Logger) *ClassRepo
 
 func (cr *ClassRepository) CreateClass(ctx context.Context, tx pgx.Tx, createClass *CreateClass) (*Class, *exceptions.AppError) {
 	sql := `
-		INSERT INTO classes (grade_level, class_name)
-		VALUES ($1, $2)
-		RETURNING class_id, grade_level, class_name;
+		INSERT INTO classes (school_id, grade_level, class_name)
+		VALUES ($1, $2, $3)
+		RETURNING class_id, school_id, grade_level, class_name;
 	`
 
 	var class Class
@@ -39,12 +40,12 @@ func (cr *ClassRepository) CreateClass(ctx context.Context, tx pgx.Tx, createCla
 
 	if tx != nil {
 		cr.logger.Debug("Creating class in transaction")
-		err = tx.QueryRow(ctx, sql, createClass.GradeLevel, createClass.ClassName).
-			Scan(&class.ClassId, &class.GradeLevel, &class.ClassName)
+		err = tx.QueryRow(ctx, sql, createClass.SchoolId, createClass.GradeLevel, createClass.ClassName).
+			Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
 	} else {
 		cr.logger.Debug("Creating class without transaction")
-		err = cr.db.Pool.QueryRow(ctx, sql, createClass.GradeLevel, createClass.ClassName).
-			Scan(&class.ClassId, &class.GradeLevel, &class.ClassName)
+		err = cr.db.Pool.QueryRow(ctx, sql, createClass.SchoolId, createClass.GradeLevel, createClass.ClassName).
+			Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
 	}
 
 	if err != nil {
@@ -61,7 +62,7 @@ func (cr *ClassRepository) GetClassById(ctx context.Context, tx pgx.Tx, classId 
 	}
 
 	sql := `
-		SELECT class_id, grade_level, class_name
+		SELECT class_id, school_id, grade_level, class_name
 		FROM classes
 		WHERE class_id = $1;
 	`
@@ -72,11 +73,11 @@ func (cr *ClassRepository) GetClassById(ctx context.Context, tx pgx.Tx, classId 
 	if tx != nil {
 		cr.logger.Debug("Getting class by id in transaction", zap.Int32("class_id", classId))
 		err = tx.QueryRow(ctx, sql, classId).
-			Scan(&class.ClassId, &class.GradeLevel, &class.ClassName)
+			Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
 	} else {
 		cr.logger.Debug("Getting class by id without transaction", zap.Int32("class_id", classId))
 		err = cr.db.Pool.QueryRow(ctx, sql, classId).
-			Scan(&class.ClassId, &class.GradeLevel, &class.ClassName)
+			Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
 	}
 
 	if err != nil {
@@ -89,9 +90,9 @@ func (cr *ClassRepository) GetClassById(ctx context.Context, tx pgx.Tx, classId 
 
 func (cr *ClassRepository) GetClasses(ctx context.Context, tx pgx.Tx) ([]Class, *exceptions.AppError) {
 	sql := `
-		SELECT class_id, grade_level, class_name
+		SELECT class_id, school_id, grade_level, class_name
 		FROM classes
-		ORDER BY grade_level, class_name;
+		ORDER BY school_id, grade_level, class_name;
 	`
 
 	var classes []Class
@@ -114,7 +115,55 @@ func (cr *ClassRepository) GetClasses(ctx context.Context, tx pgx.Tx) ([]Class, 
 
 	for rows.Next() {
 		var class Class
-		err = rows.Scan(&class.ClassId, &class.GradeLevel, &class.ClassName)
+		err = rows.Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
+		if err != nil {
+			cr.logger.Error("Failed to scan class row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+		classes = append(classes, class)
+	}
+
+	if err = rows.Err(); err != nil {
+		cr.logger.Error("Error iterating classes rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return classes, nil
+}
+
+func (cr *ClassRepository) GetClassesBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Class, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
+	sql := `
+		SELECT class_id, school_id, grade_level, class_name
+		FROM classes
+		WHERE school_id = $1
+		ORDER BY grade_level, class_name;
+	`
+
+	var classes []Class
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		cr.logger.Debug("Getting classes by school id in transaction", zap.Int32("school_id", schoolId))
+		rows, err = tx.Query(ctx, sql, schoolId)
+	} else {
+		cr.logger.Debug("Getting classes by school id without transaction", zap.Int32("school_id", schoolId))
+		rows, err = cr.db.Pool.Query(ctx, sql, schoolId)
+	}
+
+	if err != nil {
+		cr.logger.Error("Failed to get classes by school id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var class Class
+		err = rows.Scan(&class.ClassId, &class.SchoolId, &class.GradeLevel, &class.ClassName)
 		if err != nil {
 			cr.logger.Error("Failed to scan class row", zap.Error(err))
 			return nil, exceptions.PgErrorToAppError(err)

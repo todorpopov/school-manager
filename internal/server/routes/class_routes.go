@@ -41,6 +41,14 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		),
 	)
 
+	s.Handle("GET /api/school/{school_id}/classes",
+		middleware.Chain(
+			handlers.GetClassesBySchoolIdHandler(writer, classSvc, logger),
+			logging,
+			//requireAdmin,
+		),
+	)
+
 	s.Handle("DELETE /api/class/{class_id}",
 		middleware.Chain(
 			handlers.DeleteClassHandler(writer, classSvc, logger),

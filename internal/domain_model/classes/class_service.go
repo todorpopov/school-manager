@@ -12,6 +12,7 @@ type IClassService interface {
 	CreateClass(ctx context.Context, tx pgx.Tx, createClass *CreateClass) (*Class, *exceptions.AppError)
 	GetClassById(ctx context.Context, tx pgx.Tx, classId int32) (*Class, *exceptions.AppError)
 	GetClasses(ctx context.Context, tx pgx.Tx) ([]Class, *exceptions.AppError)
+	GetClassesBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Class, *exceptions.AppError)
 	DeleteClass(ctx context.Context, tx pgx.Tx, classId int32) *exceptions.AppError
 }
 
@@ -42,6 +43,14 @@ func (cs *ClassService) GetClassById(ctx context.Context, tx pgx.Tx, classId int
 
 func (cs *ClassService) GetClasses(ctx context.Context, tx pgx.Tx) ([]Class, *exceptions.AppError) {
 	return cs.classRepo.GetClasses(ctx, tx)
+}
+
+func (cs *ClassService) GetClassesBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Class, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(schoolId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid school ID", map[string]string{"school_id": msg})
+	}
+
+	return cs.classRepo.GetClassesBySchoolId(ctx, tx, schoolId)
 }
 
 func (cs *ClassService) DeleteClass(ctx context.Context, tx pgx.Tx, classId int32) *exceptions.AppError {

@@ -66,6 +66,26 @@ func GetClassesHandler(hw *writer.HttpWriter, classSvc classes.IClassService, lo
 	}
 }
 
+func GetClassesBySchoolIdHandler(hw *writer.HttpWriter, classSvc classes.IClassService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		schoolId, err := strconv.Atoi(r.PathValue("school_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid school ID"))
+			return
+		}
+
+		schoolClasses, err1 := classSvc.GetClassesBySchoolId(r.Context(), nil, int32(schoolId))
+		if err1 != nil {
+			logger.Error("Failed to get classes by school ID", zap.Int("school_id", schoolId), zap.Error(err1))
+			hw.WriteError(w, err1)
+			return
+		}
+
+		resp := internal.NewApiResponse(false, "Classes retrieved successfully", schoolClasses)
+		hw.WriteResponse(w, http.StatusOK, resp)
+	}
+}
+
 func DeleteClassHandler(hw *writer.HttpWriter, classSvc classes.IClassService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		classId, err := strconv.Atoi(r.PathValue("class_id"))
