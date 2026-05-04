@@ -29,9 +29,9 @@ func NewTermRepository(db *persistence.Database, logger *zap.Logger) *TermReposi
 
 func (tr *TermRepository) CreateTerm(ctx context.Context, tx pgx.Tx, createTerm *CreateTerm) (*Term, *exceptions.AppError) {
 	sql := `
-		INSERT INTO terms (name)
-		VALUES ($1)
-		RETURNING term_id, name;
+		INSERT INTO terms (name, start_date, end_date)
+		VALUES ($1, $2, $3)
+		RETURNING term_id, name, start_date, end_date;
 	`
 
 	var term Term
@@ -39,12 +39,12 @@ func (tr *TermRepository) CreateTerm(ctx context.Context, tx pgx.Tx, createTerm 
 
 	if tx != nil {
 		tr.logger.Debug("Creating term in transaction")
-		err = tx.QueryRow(ctx, sql, createTerm.Name).
-			Scan(&term.TermId, &term.Name)
+		err = tx.QueryRow(ctx, sql, createTerm.Name, createTerm.StartDate, createTerm.EndDate).
+			Scan(&term.TermId, &term.Name, &term.StartDate, &term.EndDate)
 	} else {
 		tr.logger.Debug("Creating term without transaction")
-		err = tr.db.Pool.QueryRow(ctx, sql, createTerm.Name).
-			Scan(&term.TermId, &term.Name)
+		err = tr.db.Pool.QueryRow(ctx, sql, createTerm.Name, createTerm.StartDate, createTerm.EndDate).
+			Scan(&term.TermId, &term.Name, &term.StartDate, &term.EndDate)
 	}
 
 	if err != nil {
@@ -61,7 +61,7 @@ func (tr *TermRepository) GetTermById(ctx context.Context, tx pgx.Tx, termId int
 	}
 
 	sql := `
-		SELECT term_id, name
+		SELECT term_id, name, start_date, end_date
 		FROM terms
 		WHERE term_id = $1;
 	`
@@ -72,11 +72,11 @@ func (tr *TermRepository) GetTermById(ctx context.Context, tx pgx.Tx, termId int
 	if tx != nil {
 		tr.logger.Debug("Getting term by id in transaction", zap.Int32("term_id", termId))
 		err = tx.QueryRow(ctx, sql, termId).
-			Scan(&term.TermId, &term.Name)
+			Scan(&term.TermId, &term.Name, &term.StartDate, &term.EndDate)
 	} else {
 		tr.logger.Debug("Getting term by id without transaction", zap.Int32("term_id", termId))
 		err = tr.db.Pool.QueryRow(ctx, sql, termId).
-			Scan(&term.TermId, &term.Name)
+			Scan(&term.TermId, &term.Name, &term.StartDate, &term.EndDate)
 	}
 
 	if err != nil {
@@ -89,9 +89,9 @@ func (tr *TermRepository) GetTermById(ctx context.Context, tx pgx.Tx, termId int
 
 func (tr *TermRepository) GetTerms(ctx context.Context, tx pgx.Tx) ([]Term, *exceptions.AppError) {
 	sql := `
-		SELECT term_id, name
+		SELECT term_id, name, start_date, end_date
 		FROM terms
-		ORDER BY name;
+		ORDER BY start_date, name;
 	`
 
 	var terms []Term
@@ -114,7 +114,7 @@ func (tr *TermRepository) GetTerms(ctx context.Context, tx pgx.Tx) ([]Term, *exc
 
 	for rows.Next() {
 		var term Term
-		err = rows.Scan(&term.TermId, &term.Name)
+		err = rows.Scan(&term.TermId, &term.Name, &term.StartDate, &term.EndDate)
 		if err != nil {
 			tr.logger.Error("Failed to scan term row", zap.Error(err))
 			return nil, exceptions.PgErrorToAppError(err)
