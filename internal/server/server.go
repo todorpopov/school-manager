@@ -39,16 +39,16 @@ func NewHttpServer(env *configs.Config, logger *zap.Logger, deps *Dependencies) 
 }
 
 func enableCors(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Session-Id")
-        if r.Method == http.MethodOptions {
-            w.WriteHeader(http.StatusNoContent)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Session-Id")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *HttpServer) Start() error {
@@ -87,4 +87,5 @@ func (s *HttpServer) registerRoutes() {
 	routes.RegisterCurriculumRoutes(s.mux, s.writer, s.logger, s.serverDeps.CurriculumSvc, s.serverDeps.AuthSvc)
 	routes.RegisterGradeRoutes(s.mux, s.writer, s.logger, s.serverDeps.GradeSvc, s.serverDeps.AuthSvc)
 	routes.RegisterAbsenceRoutes(s.mux, s.writer, s.logger, s.serverDeps.AbsenceSvc, s.serverDeps.AuthSvc)
+	routes.RegisterReportingRoutes(s.mux, s.writer, s.logger, s.serverDeps.DynamicRptSvc, s.serverDeps.AuthSvc)
 }

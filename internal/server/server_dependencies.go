@@ -17,6 +17,7 @@ import (
 	"github.com/todorpopov/school-manager/internal/domain_model/teachers"
 	"github.com/todorpopov/school-manager/internal/domain_model/terms"
 	"github.com/todorpopov/school-manager/internal/domain_model/users"
+	"github.com/todorpopov/school-manager/internal/reporting"
 	"github.com/todorpopov/school-manager/internal/user_auth"
 	"github.com/todorpopov/school-manager/persistence"
 	"go.uber.org/zap"
@@ -56,6 +57,7 @@ type Dependencies struct {
 	AbsenceRepo        absences.IAbsenceRepository
 	AbsenceSvc         absences.IAbsenceService
 	AuthSvc            user_auth.IAuthService
+	DynamicRptSvc      reporting.IDynamicReportingService
 }
 
 func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.Logger) *Dependencies {
@@ -111,6 +113,8 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 	absenceSvc := absences.NewAbsenceService(absenceRepo)
 
 	authSvc := user_auth.NewAuthService(bcryptSvc, usrSvc, sessionSvc, env.SystemAuthToken)
+
+	dynamicRptSvc := reporting.NewDynamicReportingService(db, logger)
 	return &Dependencies{
 		UserRepo:           usrRepo,
 		UserSvc:            usrSvc,
@@ -145,5 +149,6 @@ func NewDependencies(env *configs.Config, db *persistence.Database, logger *zap.
 		AbsenceRepo:        absenceRepo,
 		AbsenceSvc:         absenceSvc,
 		AuthSvc:            authSvc,
+		DynamicRptSvc:      dynamicRptSvc,
 	}
 }
