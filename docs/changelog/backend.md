@@ -13,3 +13,16 @@
     - Added a new route to fetch all classes for a specific school - `GET /api/school/{school_id}/classes`
   - Requires UI changes:
     - Status: `Open`
+- 05.05.2026
+  - Dynamic reporting service
+  - Changes:
+    - Create a new reporting service that can generate reports based on `report_type` and filters provided in the request body.
+    - The service supports the `grades` and `absences` report types
+    - Filters:
+      - `school_ids` - Array of school IDs to filter by. If left empty, it will include all schools.
+      - `teacher_ids` - Array of teacher IDs to filter by. If left empty, it will include all teachers.
+      - `subject_ids` - Array of global subjects (shared between all tenants/schools) to filter by. If left empty, it will include all subjects.
+    - `Validation` - the service will first validate that the requested schools, teachers, and subjects are valid and have existing relations between each other.
+    - Returning a hierarchical data structure; array of requested schools, each with an array of requested teachers, each with an array of requested subjects, each associated with a report summary (grades or absences).
+  - Requires UI changes:
+    - Status: `Open`

@@ -12,7 +12,7 @@ type Teacher struct {
 	FirstName string          `json:"first_name"`
 	LastName  string          `json:"last_name"`
 	Email     string          `json:"email"`
-	School    *schools.School `json:"school"`
+	School    *schools.School `json:"school,omitempty"`
 	Roles     []string        `json:"roles,omitempty"`
 }
 
@@ -68,7 +68,6 @@ func ValidateCreateTeacher(createTeacher *CreateTeacher) *exceptions.AppError {
 		messages["password"] = msg
 	}
 
-
 	if len(messages) > 0 {
 		return exceptions.NewValidationError("Validation failed during teacher creation", messages)
 	}
@@ -103,7 +102,6 @@ func ValidateUpdateTeacher(updateTeacher *UpdateTeacher) *exceptions.AppError {
 	if msg != "" {
 		messages["email"] = msg
 	}
-
 
 	if len(messages) > 0 {
 		return exceptions.NewValidationError("Validation failed during teacher update", messages)
