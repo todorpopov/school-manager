@@ -18,6 +18,7 @@ type IStudentRepository interface {
 	GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError)
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
+	GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError)
 	UpdateStudentClass(ctx context.Context, tx pgx.Tx, studentId int32, classId *int32) *exceptions.AppError
 	UpdateStudentSchool(ctx context.Context, tx pgx.Tx, studentId int32, schoolId int32) *exceptions.AppError
 	DeleteStudent(ctx context.Context, tx pgx.Tx, studentId int32) *exceptions.AppError
@@ -368,4 +369,65 @@ func (sr *StudentRepository) DeleteStudent(ctx context.Context, tx pgx.Tx, stude
 	}
 
 	return nil
+}
+
+func (sr *StudentRepository) GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError) {
+	sqlStmt := `
+		SELECT DISTINCT
+			s.student_id, s.user_id, s.class_id,
+			u.first_name, u.last_name, u.email,
+			sch.school_id, sch.school_name, sch.school_address,
+			c.class_id, c.grade_level, c.class_name
+		FROM students s
+		INNER JOIN users u ON s.user_id = u.user_id
+		INNER JOIN schools sch ON s.school_id = sch.school_id
+		INNER JOIN classes c ON s.class_id = c.class_id
+		INNER JOIN curricula cur ON cur.class_id = c.class_id AND cur.teacher_id = $1
+		ORDER BY c.grade_level, c.class_name, u.last_name, u.first_name;
+	`
+
+	var result []Student
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sqlStmt, teacherId)
+	} else {
+		rows, err = sr.db.Pool.Query(ctx, sqlStmt, teacherId)
+	}
+
+	if err != nil {
+		sr.logger.Error("Failed to get students by teacher id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var student Student
+		var class classes.Class
+		var school schools.School
+		var tempClassId *int32
+
+		err = rows.Scan(
+			&student.StudentId, &student.UserId, &tempClassId,
+			&student.FirstName, &student.LastName, &student.Email,
+			&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
+			&class.ClassId, &class.GradeLevel, &class.ClassName,
+		)
+		if err != nil {
+			sr.logger.Error("Failed to scan student row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+
+		student.School = &school
+		student.Class = &class
+		result = append(result, student)
+	}
+
+	if err = rows.Err(); err != nil {
+		sr.logger.Error("Error iterating students rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return result, nil
 }

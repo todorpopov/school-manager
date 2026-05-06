@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useGetStudents } from '../../hooks/useStudents'
+import { useGetStudentsByTeacherId } from '../../hooks/useStudents'
 import { useGetCurricula } from '../../hooks/useCurricula'
 import {
     useGetAllGrades, useGetAllAbsences,
@@ -12,6 +12,8 @@ import { Toast } from '../../components/Toast'
 import { useToast } from '../../hooks/useToast'
 import type { Student } from '../../types/students'
 import type { Curriculum } from '../../types/curricula'
+import { useAuth } from '../../hooks/useAuth'
+import { useGetTeacherByUserId } from '../../hooks/useTeachers'
 
 type Tab = 'grades' | 'absences'
 type Mode = 'individual' | 'bulk'
@@ -30,10 +32,14 @@ interface BulkGradeRow { student_id: number; first_name: string; last_name: stri
 interface BulkAbsenceRow { student_id: number; first_name: string; last_name: string; is_excused: boolean; include: boolean }
 
 const TeacherPage: React.FC = () => {
-    const { data: students = [], isLoading: loadingStudents } = useGetStudents()
-    const { data: curricula = [] } = useGetCurricula()
-    const { data: allGrades = [], isLoading: loadingGrades } = useGetAllGrades()
-    const { data: allAbsences = [], isLoading: loadingAbsences } = useGetAllAbsences()
+    const { user } = useAuth()
+    const { data: teacher } = useGetTeacherByUserId(user?.userId)
+    const teacherId = teacher?.teacher_id
+    const { data: students = [], isLoading: loadingStudents } = useGetStudentsByTeacherId(teacherId)
+    const { data: allCurricula = [] } = useGetCurricula()
+    const curricula = teacherId
+        ? allCurricula.filter((c: Curriculum) => c.teacher_id === teacherId)
+        : allCurricula
 
     const createGrade   = useCreateGrade()
     const deleteGrade   = useDeleteGrade()
@@ -41,6 +47,8 @@ const TeacherPage: React.FC = () => {
     const deleteAbsence = useDeleteAbsence()
     const bulkCreateGrades   = useBulkCreateGrades()
     const bulkCreateAbsences = useBulkCreateAbsences()
+    const { data: allGrades = [], isLoading: loadingGrades } = useGetAllGrades()
+    const { data: allAbsences = [], isLoading: loadingAbsences } = useGetAllAbsences()
 
     const { toast, show, dismiss } = useToast()
 

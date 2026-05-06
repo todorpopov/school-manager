@@ -1,60 +1,68 @@
 import type { AuthResponse } from '../types/auth'
 
-// const BASE = '/api'
+const BASE = '/api'
 
 export async function apiLogin(email: string, password: string): Promise<AuthResponse> {
     console.log(email, password);
 
-    if (email.startsWith("a")) {
-        return {
-            sessionId: 'mock-session-id',
-            roles: ['ADMIN'],
-            firstName: 'Ivan',
-            lastName: 'Petrov',
-            email,
-        }
-    }
-
-    if (email.startsWith("p")) {
-        return {
-            sessionId: 'mock-session-id',
-            roles: ['PARENT'],
-            firstName: 'Ivan',
-            lastName: 'Petrov',
-            email,
-        }
-    }
-
-    if (email.startsWith("t")) {
-        return {
-            sessionId: 'mock-session-id',
-            roles: ['TEACHER'],
-            firstName: 'Ivan',
-            lastName: 'Petrov',
-            email,
-        }
-    }
-
-    return {
-        sessionId: 'mock-session-id',
-        roles: ['DIRECTOR'],
-        firstName: 'Ivan',
-        lastName: 'Petrov',
-        email,
-    }
-    // const res = await fetch(`${BASE}/auth/login`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ email, password }),
-    // })
-    //
-    // const json = await res.json()
-    //
-    // if (json.error) {
-    //   throw new Error(json.message)
+    // if (email.startsWith("a")) {
+    //     return {
+    //         sessionId: 'mock-session-id',
+    //         roles: ['ADMIN'],
+    //         firstName: 'Ivan',
+    //         lastName: 'Petrov',
+    //         email,
+    //     }
     // }
     //
-    // return json.data as AuthResponse
+    // if (email.startsWith("p")) {
+    //     return {
+    //         sessionId: 'mock-session-id',
+    //         roles: ['PARENT'],
+    //         firstName: 'Ivan',
+    //         lastName: 'Petrov',
+    //         email,
+    //     }
+    // }
+    //
+    // if (email.startsWith("t")) {
+    //     return {
+    //         sessionId: 'mock-session-id',
+    //         roles: ['TEACHER'],
+    //         firstName: 'Ivan',
+    //         lastName: 'Petrov',
+    //         email,
+    //     }
+    // }
+    //
+    // return {
+    //     sessionId: 'mock-session-id',
+    //     roles: ['DIRECTOR'],
+    //     firstName: 'Ivan',
+    //     lastName: 'Petrov',
+    //     email,
+    // }
+    const res = await fetch(`${BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+
+    const json = await res.json()
+
+    if (json.error) {
+      throw new Error(json.message)
+    }
+
+    const raw = json.data
+    return {
+        sessionId: raw.sessionId,
+        userId: raw.user_id,
+        roles: raw.roles,
+        firstName: raw.first_name,
+        lastName: raw.last_name,
+        email: raw.email,
+    } as AuthResponse
 }
 
 export async function apiRegister(
@@ -67,6 +75,7 @@ export async function apiRegister(
     return {
         sessionId: 'mock-session-id',
         roles: ['TEACHER', 'PARENT'],
+        userId: 1,
         firstName: 'Ivan',
         lastName: 'Petrov',
         email,

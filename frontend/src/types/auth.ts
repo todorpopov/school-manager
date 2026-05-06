@@ -7,6 +7,7 @@ export const AMBIGUOUS_ROLE_PAIRS: Role[][] = [
 export interface AuthResponse {
     sessionId: string
     token?: string
+    userId: number
     roles: Role[]
     firstName: string
     lastName: string
@@ -16,6 +17,7 @@ export interface AuthResponse {
 export interface AuthState {
     sessionId: string
     activeRole: Role
+    userId: number
     roles: Role[]
     firstName: string
     lastName: string

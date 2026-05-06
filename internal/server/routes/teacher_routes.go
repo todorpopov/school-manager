@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"github.com/todorpopov/school-manager/internal/domain_model/students"
 	"github.com/todorpopov/school-manager/internal/domain_model/teachers"
 	"github.com/todorpopov/school-manager/internal/server/handlers"
 	"github.com/todorpopov/school-manager/internal/server/middleware"
@@ -11,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger, teacherSvc teachers.ITeacherService, authSvc user_auth.IAuthService) {
+func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap.Logger, teacherSvc teachers.ITeacherService, studentSvc students.IStudentService, authSvc user_auth.IAuthService) {
 	logger.Info("Registering teacher routes")
 
 	logging := middleware.Logging(logger)
@@ -33,7 +34,7 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		),
 	)
 
-	s.Handle("GET /api/teacher/user/{user_id}",
+	s.Handle("GET /api/teacher-by-user/{user_id}",
 		middleware.Chain(
 			handlers.GetTeacherByUserIdHandler(writer, teacherSvc, logger),
 			logging,
@@ -44,6 +45,14 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	s.Handle("GET /api/teachers",
 		middleware.Chain(
 			handlers.GetTeachersHandler(writer, teacherSvc, logger),
+			logging,
+			//requireAdmin,
+		),
+	)
+
+	s.Handle("GET /api/teacher/{teacher_id}/students",
+		middleware.Chain(
+			handlers.GetStudentsByTeacherIdHandler(writer, studentSvc, logger),
 			logging,
 			//requireAdmin,
 		),

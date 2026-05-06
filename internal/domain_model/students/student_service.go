@@ -15,6 +15,7 @@ type IStudentService interface {
 	GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError)
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
+	GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError)
 	UpdateStudent(ctx context.Context, tx pgx.Tx, updateStudent *UpdateStudent) (*Student, *exceptions.AppError)
 	DeleteStudent(ctx context.Context, tx pgx.Tx, studentId int32) *exceptions.AppError
 }
@@ -146,6 +147,34 @@ func (ss *StudentService) GetStudents(ctx context.Context, tx pgx.Tx) ([]Student
 			userIds[i] = students[i].UserId
 		}
 
+		rolesMap, rolesErr := ss.userSvc.GetUsersRoles(ctx, tx, userIds)
+		if rolesErr != nil {
+			return nil, rolesErr
+		}
+
+		for i := range students {
+			students[i].Roles = rolesMap[students[i].UserId]
+		}
+	}
+
+	return students, nil
+}
+
+func (ss *StudentService) GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(teacherId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid teacher ID", map[string]string{"teacher_id": msg})
+	}
+
+	students, err := ss.studentRepo.GetStudentsByTeacherId(ctx, tx, teacherId)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(students) > 0 {
+		userIds := make([]int32, len(students))
+		for i := range students {
+			userIds[i] = students[i].UserId
+		}
 		rolesMap, rolesErr := ss.userSvc.GetUsersRoles(ctx, tx, userIds)
 		if rolesErr != nil {
 			return nil, rolesErr

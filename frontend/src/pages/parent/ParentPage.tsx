@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { Toast } from '../../components/Toast'
 import { useToast } from '../../hooks/useToast'
 import { useGetGradesForStudent, useGetAbsencesForStudent } from '../../hooks/useGradesAbsences'
+import { useGetParentByUserId } from '../../hooks/useParents'
+import { useAuth } from '../../hooks/useAuth'
 import type { Grade, Absence } from '../../types/gradesAbsences'
 import axiosInstance from '../../utils/axiosConfig'
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
-
-const MOCK_PARENT_ID = 1
 
 interface Child {
     student_id: number
@@ -61,7 +61,7 @@ const ChildAbsences: React.FC<{ studentId: number }> = ({ studentId }) => {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex gap-4 px-4">
+            <div className="flex gap-4 px-4 pt-4">
                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block" />
                     Excused: <strong>{excused}</strong>
@@ -99,17 +99,23 @@ const ChildAbsences: React.FC<{ studentId: number }> = ({ studentId }) => {
 }
 
 const ParentPage: React.FC = () => {
+    const { user, logout } = useAuth()
+    const { data: parent, isLoading: loadingParent } = useGetParentByUserId(user?.userId)
+    const parentId = parent?.parent_id
+
     const [children, setChildren] = useState<Child[]>([])
     const [selectedChild, setSelectedChild] = useState<Child | null>(null)
     const [tab, setTab] = useState<Tab>('grades')
-    const [loadingChildren, setLoadingChildren] = useState(true)
+    const [loadingChildren, setLoadingChildren] = useState(false)
     const { toast, show, dismiss } = useToast()
 
     useEffect(() => {
-        const fetch = async () => {
+        if (!parentId) return
+        setLoadingChildren(true)
+        const fetchChildren = async () => {
             try {
                 const res = await axiosInstance.get<{ data: Child[] }>(
-                    `${API_URL}/student-parent/parent/${MOCK_PARENT_ID}/students`
+                    `${API_URL}/student-parent/parent/${parentId}/students`
                 )
                 const kids = res.data.data ?? []
                 setChildren(kids)
@@ -120,23 +126,35 @@ const ParentPage: React.FC = () => {
                 setLoadingChildren(false)
             }
         }
-        fetch()
-    }, [])
+        fetchChildren()
+    }, [parentId])
+
+    const isLoading = loadingParent || loadingChildren
 
     return (
         <main className="max-w-4xl mx-auto px-4 py-10 flex flex-col gap-6">
             {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
 
             <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">My Children</h1>
-            {loadingChildren && (
+
+            {!user?.userId && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl px-5 py-4 flex items-center justify-between">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">Your session is outdated. Please log in again to view your children.</p>
+                    <button onClick={logout} className="px-4 py-1.5 text-sm font-medium rounded-md bg-yellow-500 hover:bg-yellow-600 text-white border-none cursor-pointer transition-colors ml-4 shrink-0">
+                        Log out
+                    </button>
+                </div>
+            )}
+
+            {isLoading && (
                 <div className="flex justify-center py-10">
                     <div className="w-7 h-7 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
                 </div>
             )}
-            {!loadingChildren && !children.length && (
+            {!isLoading && !children.length && (
                 <p className="text-center text-slate-400 py-10 text-sm">No children linked to your account.</p>
             )}
-            {!loadingChildren && children.length > 0 && (
+            {!isLoading && children.length > 0 && (
                 <>
                     {children.length > 1 && (
                         <div className="flex gap-2 flex-wrap">
@@ -190,4 +208,3 @@ const ParentPage: React.FC = () => {
 }
 
 export default ParentPage
-

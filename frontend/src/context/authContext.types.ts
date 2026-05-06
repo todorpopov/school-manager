@@ -4,6 +4,7 @@ import type { Role, AuthResponse } from '../types/auth'
 export interface AuthUser {
     sessionId: string
     token?: string
+    userId: number
     activeRole: Role
     roles: Role[]
     firstName: string

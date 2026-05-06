@@ -20,6 +20,20 @@ export const useGetTeachers = (): UseQueryResult<Teacher[], Error> =>
         refetchInterval: 5000,
     })
 
+export const useGetTeacherByUserId = (userId: number | undefined): UseQueryResult<Teacher, Error> =>
+    useQuery<Teacher, Error>({
+        queryKey: ['teacher-user', userId],
+        queryFn: async () => {
+            try {
+                const { data } = await axiosInstance.get<{ data: Teacher }>(`${API_URL}/teacher/user/${userId}`)
+                return data.data
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        enabled: !!userId,
+    })
+
 export const useCreateTeacher = () => {
     const queryClient = useQueryClient()
     return useMutation({

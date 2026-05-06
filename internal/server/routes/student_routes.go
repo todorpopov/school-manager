@@ -33,7 +33,7 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		),
 	)
 
-	s.Handle("GET /api/student/user/{user_id}",
+	s.Handle("GET /api/student-by-user/{user_id}",
 		middleware.Chain(
 			handlers.GetStudentByUserIdHandler(writer, studentSvc, logger),
 			logging,

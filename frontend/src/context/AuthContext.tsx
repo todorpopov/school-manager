@@ -15,6 +15,7 @@ function buildUser(authResponse: AuthResponse, activeRole: Role): AuthUser {
     return {
         sessionId: authResponse.sessionId,
         token: authResponse.token,
+        userId: authResponse.userId,
         activeRole,
         roles: authResponse.roles,
         firstName: authResponse.firstName,

@@ -33,7 +33,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		),
 	)
 
-	s.Handle("GET /api/parent/user/{user_id}",
+	s.Handle("GET /api/parent-by-user/{user_id}",
 		middleware.Chain(
 			handlers.GetParentByUserIdHandler(writer, parentSvc, logger),
 			logging,
