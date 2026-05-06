@@ -1,4 +1,4 @@
-export interface DirectorSchool {
+export interface PrincipalSchool {
     school_id: number
     school_name: string
     school_address: string
@@ -8,7 +8,7 @@ export interface Principals {
     [key: string]: unknown
     director_id: number
     user_id: number
-    school: DirectorSchool
+    school: PrincipalSchool
     first_name: string
     last_name: string
     email: string

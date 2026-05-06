@@ -9,7 +9,7 @@ import axiosInstance from '../../utils/axiosConfig'
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
-const DirectorSubjectsPage: React.FC = () => {
+const PrincipalSubjectsPage: React.FC = () => {
     const { data = [], isLoading, error } = useGetSubjects()
     const { toast, show, dismiss } = useToast()
     const [subjectTeachersMap, setSubjectTeachersMap] = useState<Record<number, { first_name: string; last_name: string }[]>>({})
@@ -69,5 +69,5 @@ const DirectorSubjectsPage: React.FC = () => {
     )
 }
 
-export default DirectorSubjectsPage
+export default PrincipalSubjectsPage
 

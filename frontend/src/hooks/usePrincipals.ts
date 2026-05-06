@@ -6,9 +6,9 @@ import type { Principals, CreatePrincipalPayload, UpdatePrincipalPayload } from 
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
-export const useGetDirectors = (): UseQueryResult<Principals[], Error> =>
+export const useGetPrincipals = (): UseQueryResult<Principals[], Error> =>
     useQuery<Principals[], Error>({
-        queryKey: ['directors'],
+        queryKey: ['principals'],
         queryFn: async () => {
             try {
                 const { data } = await axiosInstance.get<{ data: Principals[] }>(`${API_URL}/directors`)
@@ -20,7 +20,7 @@ export const useGetDirectors = (): UseQueryResult<Principals[], Error> =>
         refetchInterval: 5000,
     })
 
-export const useCreateDirector = () => {
+export const useCreatePrincipal = () => {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (payload: CreatePrincipalPayload) => {
@@ -31,11 +31,11 @@ export const useCreateDirector = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['directors'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['principals'] }),
     })
 }
 
-export const useUpdateDirector = () => {
+export const useUpdatePrincipal = () => {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async ({ id, payload }: { id: number; payload: UpdatePrincipalPayload }) => {
@@ -46,11 +46,11 @@ export const useUpdateDirector = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['directors'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['principals'] }),
     })
 }
 
-export const useDeleteDirector = () => {
+export const useDeletePrincipal = () => {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (id: number) => {
@@ -60,6 +60,6 @@ export const useDeleteDirector = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['directors'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['principals'] }),
     })
 }

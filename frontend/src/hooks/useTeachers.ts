@@ -25,7 +25,7 @@ export const useGetTeacherByUserId = (userId: number | undefined): UseQueryResul
         queryKey: ['teacher-user', userId],
         queryFn: async () => {
             try {
-                const { data } = await axiosInstance.get<{ data: Teacher }>(`${API_URL}/teacher/user/${userId}`)
+                const { data } = await axiosInstance.get<{ data: Teacher }>(`${API_URL}/teacher-by-user/${userId}`)
                 return data.data
             } catch (err) {
                 throw new Error(parseApiError(err))

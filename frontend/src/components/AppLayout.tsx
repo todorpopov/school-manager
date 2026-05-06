@@ -13,7 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function AppLayout() {
     const { user: auth, logout } = useAuth()
     const isAdmin = auth?.activeRole === 'ADMIN'
-    const isDirector = auth?.activeRole === 'DIRECTOR'
+    const isPrincipal = auth?.activeRole === 'DIRECTOR'
     const isParent = auth?.activeRole === 'PARENT'
     const isTeacher = auth?.activeRole === 'TEACHER'
 
@@ -56,10 +56,10 @@ export default function AppLayout() {
                             </NavLink>
                         </nav>
                     )}
-                    {isDirector && (
+                    {isPrincipal && (
                         <nav className="flex items-center gap-4">
                             <NavLink
-                                to="/director"
+                                to="/principal"
                                 className={({ isActive }) =>
                                     `text-sm font-medium transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-100'}`
                                 }

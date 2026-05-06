@@ -15,6 +15,7 @@ import TeachersManagementPage from './pages/admin/management/TeachersManagementP
 import ParentsManagementPage from './pages/admin/management/ParentsManagementPage'
 import CurriculumManagementPage from './pages/admin/management/CurriculumManagementPage'
 import PrincipalPage from './pages/principal/PrincipalPage'
+import PrincipalStatisticsPage from './pages/principal/PrincipalStatisticsPage'
 import PrincipalSubjectsPage from './pages/principal/PrincipalSubjectsPage'
 import PrincipalTeachersPage from './pages/principal/PrincipalTeachersPage'
 import PrincipalStudentsPage from './pages/principal/PrincipalStudentsPage'
@@ -79,27 +80,32 @@ function App() {
                                 <CurriculumManagementPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/director" element={
+                        <Route path="/principal" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/director/subjects" element={
+                        <Route path="/principal/statistics" element={
+                            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+                                <PrincipalStatisticsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/principal/subjects" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalSubjectsPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/director/teachers" element={
+                        <Route path="/principal/teachers" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalTeachersPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/director/students" element={
+                        <Route path="/principal/students" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalStudentsPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/director/parents" element={
+                        <Route path="/principal/parents" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalParentsPage />
                             </ProtectedRoute>

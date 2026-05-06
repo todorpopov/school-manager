@@ -13,7 +13,7 @@ interface User {
 
 const ROLE_OPTIONS = [
     { label: 'Admin', value: 'ADMIN' },
-    { label: 'Director', value: 'DIRECTOR' },
+    { label: 'Principal', value: 'DIRECTOR' },
     { label: 'Teacher', value: 'TEACHER' },
     { label: 'Parent', value: 'PARENT' },
     { label: 'Student', value: 'STUDENT' },

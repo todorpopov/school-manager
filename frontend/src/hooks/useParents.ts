@@ -25,7 +25,7 @@ export const useGetParentByUserId = (userId: number | undefined): UseQueryResult
         queryKey: ['parent-user', userId],
         queryFn: async () => {
             try {
-                const { data } = await axiosInstance.get<{ data: Parent }>(`${API_URL}/parent/user/${userId}`)
+                const { data } = await axiosInstance.get<{ data: Parent }>(`${API_URL}/parent-by-user/${userId}`)
                 return data.data
             } catch (err) {
                 throw new Error(parseApiError(err))

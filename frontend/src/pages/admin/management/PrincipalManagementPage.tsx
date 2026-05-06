@@ -3,17 +3,17 @@ import { ResourceManager } from '../../../components/ResourceManager'
 import type { FieldConfig } from '../../../components/ResourceManager'
 import { Toast } from '../../../components/Toast'
 import type { Principals } from '../../../types/principals.ts'
-import { useGetDirectors, useCreateDirector, useUpdateDirector, useDeleteDirector } from '../../../hooks/usePrincipals.ts'
+import { useGetPrincipals, useCreatePrincipal, useUpdatePrincipal, useDeletePrincipal } from '../../../hooks/usePrincipals.ts'
 import { useGetSchools } from '../../../hooks/useSchools.ts'
 import { useToast } from '../../../hooks/useToast'
 import { validateName, validateEmail, validatePassword } from '../../../utils/validators'
 
 const PrincipalManagementPage: React.FC = () => {
-    const { data = [], isLoading, error } = useGetDirectors()
+    const { data = [], isLoading, error } = useGetPrincipals()
     const { data: schools = [] } = useGetSchools()
-    const createMutation = useCreateDirector()
-    const updateMutation = useUpdateDirector()
-    const deleteMutation = useDeleteDirector()
+    const createMutation = useCreatePrincipal()
+    const updateMutation = useUpdatePrincipal()
+    const deleteMutation = useDeletePrincipal()
 
     const { toast, show, dismiss } = useToast()
 
@@ -66,7 +66,7 @@ const PrincipalManagementPage: React.FC = () => {
         <main className="max-w-5xl mx-auto px-4 py-10">
             {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
             <ResourceManager<Principals>
-                title="Directors"
+                title="Principals"
                 data={enrichedData}
                 fields={PRINCIPAL_FIELDS}
                 idKey="director_id"
