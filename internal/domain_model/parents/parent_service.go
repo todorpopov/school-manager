@@ -15,6 +15,7 @@ type IParentService interface {
 	GetParentById(ctx context.Context, tx pgx.Tx, parentId int32) (*Parent, *exceptions.AppError)
 	GetParentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Parent, *exceptions.AppError)
 	GetParents(ctx context.Context, tx pgx.Tx) ([]Parent, *exceptions.AppError)
+	GetParentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Parent, *exceptions.AppError)
 	UpdateParent(ctx context.Context, tx pgx.Tx, updateParent *UpdateParent) (*Parent, *exceptions.AppError)
 	DeleteParent(ctx context.Context, tx pgx.Tx, parentId int32) *exceptions.AppError
 }
@@ -134,6 +135,31 @@ func (ps *ParentService) GetParentByUserId(ctx context.Context, tx pgx.Tx, userI
 
 func (ps *ParentService) GetParents(ctx context.Context, tx pgx.Tx) ([]Parent, *exceptions.AppError) {
 	parents, err := ps.parentRepo.GetParents(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(parents) > 0 {
+		userIds := make([]int32, len(parents))
+		for i := range parents {
+			userIds[i] = parents[i].UserId
+		}
+
+		rolesMap, rolesErr := ps.userSvc.GetUsersRoles(ctx, tx, userIds)
+		if rolesErr != nil {
+			return nil, rolesErr
+		}
+
+		for i := range parents {
+			parents[i].Roles = rolesMap[parents[i].UserId]
+		}
+	}
+
+	return parents, nil
+}
+
+func (ps *ParentService) GetParentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Parent, *exceptions.AppError) {
+	parents, err := ps.parentRepo.GetParentsBySchoolId(ctx, tx, schoolId)
 	if err != nil {
 		return nil, err
 	}

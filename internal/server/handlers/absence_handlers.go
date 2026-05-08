@@ -87,6 +87,26 @@ func GetAbsencesHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceServi
 	}
 }
 
+func GetAbsencesByStudentIdHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		studentId, err := strconv.Atoi(r.PathValue("student_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid student ID"))
+			return
+		}
+
+		result, err1 := absenceSvc.GetAbsencesByStudentId(r.Context(), nil, int32(studentId))
+		if err1 != nil {
+			logger.Error("Failed to get absences by student ID", zap.Int("student_id", studentId), zap.Error(err1))
+			hw.WriteError(w, err1)
+			return
+		}
+
+		resp := internal.NewApiResponse(false, "Absences retrieved successfully", result)
+		hw.WriteResponse(w, http.StatusOK, resp)
+	}
+}
+
 func DeleteAbsenceHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		absenceId, err := strconv.Atoi(r.PathValue("absence_id"))
@@ -103,6 +123,25 @@ func DeleteAbsenceHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceSer
 		}
 
 		hw.WriteResponse(w, http.StatusOK, internal.NewApiResponse(false, "Absence deleted successfully", nil))
+	}
+}
+
+func ExcuseAbsenceHandler(hw *writer.HttpWriter, absenceSvc absences.IAbsenceService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		absenceId, err := strconv.Atoi(r.PathValue("absence_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid absence ID"))
+			return
+		}
+
+		excuseErr := absenceSvc.ExcuseAbsence(r.Context(), nil, int32(absenceId))
+		if excuseErr != nil {
+			logger.Error("Failed to excuse absence", zap.Int("absence_id", absenceId), zap.Error(excuseErr))
+			hw.WriteError(w, excuseErr)
+			return
+		}
+
+		hw.WriteResponse(w, http.StatusOK, internal.NewApiResponse(false, "Absence excused successfully", nil))
 	}
 }
 

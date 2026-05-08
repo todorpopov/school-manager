@@ -3,14 +3,16 @@ import { ResourceManager } from '../../components/ResourceManager'
 import type { FieldConfig } from '../../components/ResourceManager'
 import { Toast } from '../../components/Toast'
 import type { Student } from '../../types/students.ts'
-import { useGetStudents } from '../../hooks/useStudents.ts'
+import { useGetStudentsBySchoolId } from '../../hooks/useStudents.ts'
+import { useDirectorSchoolId } from '../../hooks/useDirectorSchool.ts'
 import { useToast } from '../../hooks/useToast'
 import axiosInstance from '../../utils/axiosConfig'
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
 const PrincipalStudentsPage: React.FC = () => {
-    const { data = [], isLoading, error } = useGetStudents()
+    const schoolId = useDirectorSchoolId()
+    const { data = [], isLoading, error } = useGetStudentsBySchoolId(schoolId)
     const { toast, show, dismiss } = useToast()
     const [studentParentsMap, setStudentParentsMap] = useState<Record<number, { first_name: string; last_name: string }[]>>({})
 

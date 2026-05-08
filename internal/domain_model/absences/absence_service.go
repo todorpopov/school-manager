@@ -13,6 +13,8 @@ type IAbsenceService interface {
 	BulkCreateAbsences(ctx context.Context, tx pgx.Tx, payload *BulkCreateAbsences) ([]Absence, *exceptions.AppError)
 	GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError)
 	GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError)
+	GetAbsencesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Absence, *exceptions.AppError)
+	ExcuseAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
 	DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
 }
 
@@ -56,6 +58,20 @@ func (as *AbsenceService) GetAbsenceById(ctx context.Context, tx pgx.Tx, absence
 
 func (as *AbsenceService) GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError) {
 	return as.absenceRepo.GetAbsences(ctx, tx)
+}
+
+func (as *AbsenceService) GetAbsencesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Absence, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(studentId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid student ID", map[string]string{"student_id": msg})
+	}
+	return as.absenceRepo.GetAbsencesByStudentId(ctx, tx, studentId)
+}
+
+func (as *AbsenceService) ExcuseAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError {
+	if msg := domain_model.ValidateId(absenceId); msg != "" {
+		return exceptions.NewValidationError("Invalid absence ID", map[string]string{"absence_id": msg})
+	}
+	return as.absenceRepo.ExcuseAbsence(ctx, tx, absenceId)
 }
 
 func (as *AbsenceService) DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError {

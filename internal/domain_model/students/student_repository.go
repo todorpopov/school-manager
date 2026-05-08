@@ -18,6 +18,7 @@ type IStudentRepository interface {
 	GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError)
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
+	GetStudentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Student, *exceptions.AppError)
 	GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError)
 	UpdateStudentClass(ctx context.Context, tx pgx.Tx, studentId int32, classId *int32) *exceptions.AppError
 	UpdateStudentSchool(ctx context.Context, tx pgx.Tx, studentId int32, schoolId int32) *exceptions.AppError
@@ -227,6 +228,77 @@ func (sr *StudentRepository) GetStudents(ctx context.Context, tx pgx.Tx) ([]Stud
 
 	if err != nil {
 		sr.logger.Error("Failed to get students", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var student Student
+		var class classes.Class
+		var school schools.School
+		var tempClassId *int32
+		var classId *int32
+		var gradeLevel *int32
+		var className *string
+
+		err = rows.Scan(
+			&student.StudentId, &student.UserId, &tempClassId,
+			&student.FirstName, &student.LastName, &student.Email,
+			&school.SchoolId, &school.SchoolName, &school.SchoolAddress,
+			&classId, &gradeLevel, &className,
+		)
+		if err != nil {
+			sr.logger.Error("Failed to scan student row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+
+		student.School = &school
+
+		if classId != nil && gradeLevel != nil && className != nil {
+			class.ClassId = *classId
+			class.GradeLevel = *gradeLevel
+			class.ClassName = *className
+			student.Class = &class
+		}
+
+		students = append(students, student)
+	}
+
+	if err = rows.Err(); err != nil {
+		sr.logger.Error("Error iterating students rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return students, nil
+}
+
+func (sr *StudentRepository) GetStudentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Student, *exceptions.AppError) {
+	sql := `
+		SELECT
+			s.student_id, s.user_id, s.class_id,
+			u.first_name, u.last_name, u.email,
+			sch.school_id, sch.school_name, sch.school_address,
+			c.class_id, c.grade_level, c.class_name
+		FROM students s
+		INNER JOIN users u ON s.user_id = u.user_id
+		INNER JOIN schools sch ON s.school_id = sch.school_id
+		LEFT JOIN classes c ON s.class_id = c.class_id
+		WHERE s.school_id = $1
+		ORDER BY c.grade_level, c.class_name, u.last_name, u.first_name;
+	`
+
+	var students []Student
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sql, schoolId)
+	} else {
+		rows, err = sr.db.Pool.Query(ctx, sql, schoolId)
+	}
+
+	if err != nil {
+		sr.logger.Error("Failed to get students by school_id", zap.Error(err))
 		return nil, exceptions.PgErrorToAppError(err)
 	}
 	defer rows.Close()

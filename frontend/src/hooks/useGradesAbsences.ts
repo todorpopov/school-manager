@@ -5,7 +5,6 @@ import type { Grade, Absence, CreateGradePayload, CreateAbsencePayload, BulkCrea
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
-// TODO endpoint
 export const useGetGradesForStudent = (studentId: number, enabled = true) =>
     useQuery<Grade[], Error>({
         queryKey: ['student-grades', studentId],
@@ -20,7 +19,6 @@ export const useGetGradesForStudent = (studentId: number, enabled = true) =>
         enabled: enabled && studentId > 0,
     })
 
-// TODO endpoint
 export const useGetAbsencesForStudent = (studentId: number, enabled = true) =>
     useQuery<Absence[], Error>({
         queryKey: ['student-absences', studentId],
@@ -63,36 +61,6 @@ export const useGetAllAbsences = () =>
         refetchInterval: 5000,
     })
 
-export const useBulkCreateGrades = () => {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async (payload: BulkCreateGradesPayload) => {
-            try {
-                const { data } = await axiosInstance.post<{ data: Grade[] }>(`${API_URL}/grades/bulk`, payload)
-                return data.data
-            } catch (err) {
-                throw new Error(parseApiError(err))
-            }
-        },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-grades'] }),
-    })
-}
-
-export const useBulkCreateAbsences = () => {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async (payload: BulkCreateAbsencesPayload) => {
-            try {
-                const { data } = await axiosInstance.post<{ data: Absence[] }>(`${API_URL}/absences/bulk`, payload)
-                return data.data
-            } catch (err) {
-                throw new Error(parseApiError(err))
-            }
-        },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-absences'] }),
-    })
-}
-
 export const useCreateGrade = () => {
     const queryClient = useQueryClient()
     return useMutation({
@@ -104,7 +72,10 @@ export const useCreateGrade = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-grades'] }),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['all-grades'] })
+            queryClient.invalidateQueries({ queryKey: ['student-grades', variables.student_id] })
+        },
     })
 }
 
@@ -118,7 +89,10 @@ export const useDeleteGrade = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-grades'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-grades'] })
+            queryClient.invalidateQueries({ queryKey: ['student-grades'] })
+        },
     })
 }
 
@@ -133,7 +107,10 @@ export const useCreateAbsence = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-absences'] }),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['all-absences'] })
+            queryClient.invalidateQueries({ queryKey: ['student-absences', variables.student_id] })
+        },
     })
 }
 
@@ -147,6 +124,62 @@ export const useDeleteAbsence = () => {
                 throw new Error(parseApiError(err))
             }
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-absences'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-absences'] })
+            queryClient.invalidateQueries({ queryKey: ['student-absences'] })
+        },
+    })
+}
+
+export const useExcuseAbsence = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (id: number) => {
+            try {
+                await axiosInstance.patch(`${API_URL}/absence/${id}/excuse`)
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-absences'] })
+            queryClient.invalidateQueries({ queryKey: ['student-absences'] })
+        },
+    })
+}
+
+export const useBulkCreateGrades = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (payload: BulkCreateGradesPayload) => {
+            try {
+                const { data } = await axiosInstance.post<{ data: Grade[] }>(`${API_URL}/grades/bulk`, payload)
+                return data.data
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-grades'] })
+            queryClient.invalidateQueries({ queryKey: ['student-grades'] })
+        },
+    })
+}
+
+export const useBulkCreateAbsences = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (payload: BulkCreateAbsencesPayload) => {
+            try {
+                const { data } = await axiosInstance.post<{ data: Absence[] }>(`${API_URL}/absences/bulk`, payload)
+                return data.data
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-absences'] })
+            queryClient.invalidateQueries({ queryKey: ['student-absences'] })
+        },
     })
 }

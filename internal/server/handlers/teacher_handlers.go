@@ -86,6 +86,26 @@ func GetTeachersHandler(hw *writer.HttpWriter, teacherSvc teachers.ITeacherServi
 	}
 }
 
+func GetTeachersBySchoolIdHandler(hw *writer.HttpWriter, teacherSvc teachers.ITeacherService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		schoolId, err := strconv.Atoi(r.PathValue("school_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid school ID"))
+			return
+		}
+
+		schoolTeachers, err1 := teacherSvc.GetTeachersBySchoolId(r.Context(), nil, int32(schoolId))
+		if err1 != nil {
+			logger.Error("Failed to get teachers by school ID", zap.Int("school_id", schoolId), zap.Error(err1))
+			hw.WriteError(w, err1)
+			return
+		}
+
+		resp := internal.NewApiResponse(false, "Teachers retrieved successfully", schoolTeachers)
+		hw.WriteResponse(w, http.StatusOK, resp)
+	}
+}
+
 func UpdateTeacherHandler(hw *writer.HttpWriter, teacherSvc teachers.ITeacherService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		teacherId, err := strconv.Atoi(r.PathValue("teacher_id"))

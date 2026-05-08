@@ -16,6 +16,7 @@ type IParentRepository interface {
 	GetParentById(ctx context.Context, tx pgx.Tx, parentId int32) (*Parent, *exceptions.AppError)
 	GetParentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Parent, *exceptions.AppError)
 	GetParents(ctx context.Context, tx pgx.Tx) ([]Parent, *exceptions.AppError)
+	GetParentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Parent, *exceptions.AppError)
 	DeleteParent(ctx context.Context, tx pgx.Tx, parentId int32) *exceptions.AppError
 }
 
@@ -169,6 +170,49 @@ func (pr *ParentRepository) GetParents(ctx context.Context, tx pgx.Tx) ([]Parent
 	return parents, nil
 }
 
+func (pr *ParentRepository) GetParentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Parent, *exceptions.AppError) {
+	sql := `
+		SELECT DISTINCT p.parent_id, p.user_id, u.first_name, u.last_name, u.email
+		FROM parents p
+		INNER JOIN users u ON p.user_id = u.user_id
+		INNER JOIN student_parents sp ON sp.parent_id = p.parent_id
+		INNER JOIN students s ON s.student_id = sp.student_id
+		WHERE s.school_id = $1;
+	`
+
+	var parents []Parent
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sql, schoolId)
+	} else {
+		rows, err = pr.db.Pool.Query(ctx, sql, schoolId)
+	}
+
+	if err != nil {
+		pr.logger.Error("Failed to get parents by school_id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var parent Parent
+		err = rows.Scan(&parent.ParentId, &parent.UserId, &parent.FirstName, &parent.LastName, &parent.Email)
+		if err != nil {
+			pr.logger.Error("Failed to scan parent row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+		parents = append(parents, parent)
+	}
+
+	if err = rows.Err(); err != nil {
+		pr.logger.Error("Error iterating parents rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return parents, nil
+}
 
 func (pr *ParentRepository) DeleteParent(ctx context.Context, tx pgx.Tx, parentId int32) *exceptions.AppError {
 	if msg := domain_model.ValidateId(parentId); msg != "" {

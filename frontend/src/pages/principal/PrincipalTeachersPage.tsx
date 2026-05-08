@@ -4,14 +4,16 @@ import type { FieldConfig } from '../../components/ResourceManager'
 import { Toast } from '../../components/Toast'
 import type { Teacher } from '../../types/teachers.ts'
 import type { Subject } from '../../types/subjects.ts'
-import { useGetTeachers } from '../../hooks/useTeachers.ts'
+import { useGetTeachersBySchoolId } from '../../hooks/useTeachers.ts'
+import { useDirectorSchoolId } from '../../hooks/useDirectorSchool.ts'
 import { useToast } from '../../hooks/useToast'
 import axiosInstance from '../../utils/axiosConfig'
 
 const API_URL = import.meta.env.VITE_API_URL as string + '/api'
 
 const PrincipalTeachersPage: React.FC = () => {
-    const { data = [], isLoading, error } = useGetTeachers()
+    const schoolId = useDirectorSchoolId()
+    const { data = [], isLoading, error } = useGetTeachersBySchoolId(schoolId)
     const { toast, show, dismiss } = useToast()
     const [teacherSubjectsMap, setTeacherSubjectsMap] = useState<Record<number, Subject[]>>({})
 

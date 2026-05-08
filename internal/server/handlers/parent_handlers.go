@@ -86,6 +86,26 @@ func GetParentsHandler(hw *writer.HttpWriter, parentSvc parents.IParentService, 
 	}
 }
 
+func GetParentsBySchoolIdHandler(hw *writer.HttpWriter, parentSvc parents.IParentService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		schoolId, err := strconv.Atoi(r.PathValue("school_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid school ID"))
+			return
+		}
+
+		result, err1 := parentSvc.GetParentsBySchoolId(r.Context(), nil, int32(schoolId))
+		if err1 != nil {
+			logger.Error("Failed to get parents by school ID", zap.Int("school_id", schoolId), zap.Error(err1))
+			hw.WriteError(w, err1)
+			return
+		}
+
+		resp := internal.NewApiResponse(false, "Parents retrieved successfully", result)
+		hw.WriteResponse(w, http.StatusOK, resp)
+	}
+}
+
 func UpdateParentHandler(hw *writer.HttpWriter, parentSvc parents.IParentService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		parentId, err := strconv.Atoi(r.PathValue("parent_id"))

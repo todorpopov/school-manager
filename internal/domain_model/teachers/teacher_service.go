@@ -15,6 +15,7 @@ type ITeacherService interface {
 	GetTeacherById(ctx context.Context, tx pgx.Tx, teacherId int32) (*Teacher, *exceptions.AppError)
 	GetTeacherByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError)
 	GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError)
+	GetTeachersBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Teacher, *exceptions.AppError)
 	UpdateTeacher(ctx context.Context, tx pgx.Tx, updateTeacher *UpdateTeacher) (*Teacher, *exceptions.AppError)
 	DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherId int32) *exceptions.AppError
 }
@@ -135,6 +136,31 @@ func (ts *TeacherService) GetTeacherByUserId(ctx context.Context, tx pgx.Tx, use
 
 func (ts *TeacherService) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError) {
 	teachers, err := ts.teacherRepo.GetTeachers(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(teachers) > 0 {
+		userIds := make([]int32, len(teachers))
+		for i := range teachers {
+			userIds[i] = teachers[i].UserId
+		}
+
+		rolesMap, rolesErr := ts.userSvc.GetUsersRoles(ctx, tx, userIds)
+		if rolesErr != nil {
+			return nil, rolesErr
+		}
+
+		for i := range teachers {
+			teachers[i].Roles = rolesMap[teachers[i].UserId]
+		}
+	}
+
+	return teachers, nil
+}
+
+func (ts *TeacherService) GetTeachersBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Teacher, *exceptions.AppError) {
+	teachers, err := ts.teacherRepo.GetTeachersBySchoolId(ctx, tx, schoolId)
 	if err != nil {
 		return nil, err
 	}

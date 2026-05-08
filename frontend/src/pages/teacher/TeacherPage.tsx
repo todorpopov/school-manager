@@ -2,14 +2,15 @@ import React, { useState } from 'react'
 import { useGetStudentsByTeacherId } from '../../hooks/useStudents'
 import { useGetCurricula } from '../../hooks/useCurricula'
 import {
-    useGetAllGrades, useGetAllAbsences,
+    useGetGradesForStudent, useGetAbsencesForStudent,
     useCreateGrade, useDeleteGrade,
-    useCreateAbsence, useDeleteAbsence,
+    useCreateAbsence, useDeleteAbsence, useExcuseAbsence,
     useBulkCreateGrades, useBulkCreateAbsences,
 } from '../../hooks/useGradesAbsences'
 import type { Grade, Absence } from '../../types/gradesAbsences'
 import { Toast } from '../../components/Toast'
 import { useToast } from '../../hooks/useToast'
+import { ConfirmDelete } from '../../components/ResourceManager/ConfirmDelete'
 import type { Student } from '../../types/students'
 import type { Curriculum } from '../../types/curricula'
 import { useAuth } from '../../hooks/useAuth'
@@ -39,18 +40,9 @@ const TeacherPage: React.FC = () => {
     const { data: allCurricula = [] } = useGetCurricula()
     const curricula = teacherId
         ? allCurricula.filter((c: Curriculum) => c.teacher_id === teacherId)
-        : allCurricula
+        : []
 
-    const createGrade   = useCreateGrade()
-    const deleteGrade   = useDeleteGrade()
-    const createAbsence = useCreateAbsence()
-    const deleteAbsence = useDeleteAbsence()
-    const bulkCreateGrades   = useBulkCreateGrades()
-    const bulkCreateAbsences = useBulkCreateAbsences()
-    const { data: allGrades = [], isLoading: loadingGrades } = useGetAllGrades()
-    const { data: allAbsences = [], isLoading: loadingAbsences } = useGetAllAbsences()
-
-    const { toast, show, dismiss } = useToast()
+    const teacherCurriculaIds = new Set(curricula.map((c: Curriculum) => c.curriculum_id))
 
     const [mode, setMode] = useState<Mode>('individual')
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
@@ -59,13 +51,30 @@ const TeacherPage: React.FC = () => {
     const [showAbsenceForm, setShowAbsenceForm] = useState(false)
     const [gradeForm, setGradeForm] = useState<GradeFormState>({ curriculum_id: '', grade_value: '', grade_date: '' })
     const [absenceForm, setAbsenceForm] = useState<AbsenceFormState>({ curriculum_id: '', absence_date: '', is_excused: false })
-
     const [bulkTab, setBulkTab] = useState<Tab>('grades')
     const [bulkClassId, setBulkClassId] = useState('')
     const [bulkCurriculumId, setBulkCurriculumId] = useState('')
     const [bulkDate, setBulkDate] = useState('')
     const [bulkGradeRows, setBulkGradeRows] = useState<BulkGradeRow[]>([])
     const [bulkAbsenceRows, setBulkAbsenceRows] = useState<BulkAbsenceRow[]>([])
+    const [confirmDelete, setConfirmDelete] = useState<{ action: () => Promise<void> } | null>(null)
+    const { data: studentGrades = [], isLoading: loadingGrades } = useGetGradesForStudent(
+        selectedStudent?.student_id ?? 0,
+        !!selectedStudent
+    )
+    const { data: studentAbsences = [], isLoading: loadingAbsences } = useGetAbsencesForStudent(
+        selectedStudent?.student_id ?? 0,
+        !!selectedStudent
+    )
+
+    const createGrade   = useCreateGrade()
+    const deleteGrade   = useDeleteGrade()
+    const createAbsence = useCreateAbsence()
+    const deleteAbsence = useDeleteAbsence()
+    const excuseAbsence = useExcuseAbsence()
+    const bulkCreateGrades   = useBulkCreateGrades()
+    const bulkCreateAbsences = useBulkCreateAbsences()
+    const { toast, show, dismiss } = useToast()
 
     const today = new Date().toISOString().split('T')[0]
 
@@ -81,13 +90,20 @@ const TeacherPage: React.FC = () => {
         ? students.filter(s => s.class && String((s.class as { class_id: number }).class_id) === bulkClassId)
         : []
 
-    const curriculaOptions = curricula.map((c: Curriculum) => ({
-        value: c.curriculum_id,
-        label: `${c.subject.subject_name} — ${c.term.name}`,
-    }))
+    const curriculaOptions = curricula
+        .filter((c: Curriculum) =>
+            selectedStudent?.class
+                ? c.class.class_id === (selectedStudent.class as { class_id: number }).class_id
+                : true
+        )
+        .map((c: Curriculum) => ({
+            value: c.curriculum_id,
+            label: `${c.subject.subject_name} — ${c.term.name}`,
+        }))
 
-    const studentGrades   = selectedStudent ? allGrades.filter(g => g.student.student_id === selectedStudent.student_id) : []
-    const studentAbsences = selectedStudent ? allAbsences.filter(a => a.student.student_id === selectedStudent.student_id) : []
+    const teacherStudentGrades   = studentGrades.filter(g => teacherCurriculaIds.has(g.curriculum.curriculum_id))
+    const teacherStudentAbsences = studentAbsences.filter(a => teacherCurriculaIds.has(a.curriculum.curriculum_id))
+
 
     const handleCreateGrade = async () => {
         if (!selectedStudent || !gradeForm.curriculum_id || !gradeForm.grade_value || !gradeForm.grade_date) {
@@ -125,12 +141,20 @@ const TeacherPage: React.FC = () => {
         } catch (e) { show((e as Error).message, 'error') }
     }
 
-    const handleDeleteGrade = async (id: number) => {
-        try { await deleteGrade.mutateAsync(id) } catch (e) { show((e as Error).message, 'error') }
+    const handleDeleteGrade = (id: number) => {
+        setConfirmDelete({ action: async () => {
+            try { await deleteGrade.mutateAsync(id) } catch (e) { show((e as Error).message, 'error') }
+        }})
     }
 
-    const handleDeleteAbsence = async (id: number) => {
-        try { await deleteAbsence.mutateAsync(id) } catch (e) { show((e as Error).message, 'error') }
+    const handleDeleteAbsence = (id: number) => {
+        setConfirmDelete({ action: async () => {
+            try { await deleteAbsence.mutateAsync(id) } catch (e) { show((e as Error).message, 'error') }
+        }})
+    }
+
+    const handleExcuseAbsence = async (id: number) => {
+        try { await excuseAbsence.mutateAsync(id) } catch (e) { show((e as Error).message, 'error') }
     }
 
     const handleBulkClassChange = (classId: string) => {
@@ -194,6 +218,12 @@ const TeacherPage: React.FC = () => {
     return (
         <main className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">
             {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
+            {confirmDelete && (
+                <ConfirmDelete
+                    onConfirm={async () => { await confirmDelete.action(); setConfirmDelete(null) }}
+                    onCancel={() => setConfirmDelete(null)}
+                />
+            )}
 
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Students</h1>
@@ -298,7 +328,7 @@ const TeacherPage: React.FC = () => {
                                         )}
                                         {loadingGrades ? (
                                             <div className="flex justify-center py-8"><div className="w-6 h-6 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" /></div>
-                                        ) : studentGrades.length === 0 ? (
+                                        ) : teacherStudentGrades.length === 0 ? (
                                             <p className="text-center text-slate-400 py-8 text-sm">No grades recorded.</p>
                                         ) : (
                                             <table className="w-full border-collapse text-sm">
@@ -306,13 +336,13 @@ const TeacherPage: React.FC = () => {
                                                     <tr>{['Subject', 'Term', 'Grade', 'Date', ''].map(h => <th key={h} className={thCls}>{h}</th>)}</tr>
                                                 </thead>
                                                 <tbody>
-                                                    {studentGrades.map((g: Grade) => (
+                                                    {teacherStudentGrades.map((g: Grade) => (
                                                         <tr key={g.grade_id} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                                             <td className={tdCls}>{g.curriculum.subject.subject_name}</td>
                                                             <td className={tdCls}>{g.curriculum.term.name}</td>
                                                             <td className={tdCls}><span className={`font-semibold ${g.grade_value >= 5 ? 'text-green-600' : g.grade_value >= 3.5 ? 'text-yellow-600' : 'text-red-500'}`}>{g.grade_value.toFixed(2)}</span></td>
                                                             <td className={tdCls}>{new Date(g.grade_date).toLocaleDateString()}</td>
-                                                            <td className="px-4 py-3 text-right"><button className={btnDanger} disabled={deleteGrade.isPending} onClick={() => handleDeleteGrade(g.grade_id)}>Delete</button></td>
+                                                            <td className="px-4 py-3 text-right"><button className={btnDanger} onClick={() => handleDeleteGrade(g.grade_id)}>Delete</button></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -361,7 +391,7 @@ const TeacherPage: React.FC = () => {
                                         )}
                                         {loadingAbsences ? (
                                             <div className="flex justify-center py-8"><div className="w-6 h-6 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" /></div>
-                                        ) : studentAbsences.length === 0 ? (
+                                        ) : teacherStudentAbsences.length === 0 ? (
                                             <p className="text-center text-slate-400 py-8 text-sm">No absences recorded.</p>
                                         ) : (
                                             <table className="w-full border-collapse text-sm">
@@ -369,7 +399,7 @@ const TeacherPage: React.FC = () => {
                                                     <tr>{['Subject', 'Term', 'Date', 'Status', ''].map(h => <th key={h} className={thCls}>{h}</th>)}</tr>
                                                 </thead>
                                                 <tbody>
-                                                    {studentAbsences.map((a: Absence) => (
+                                                    {teacherStudentAbsences.map((a: Absence) => (
                                                         <tr key={a.absence_id} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                                             <td className={tdCls}>{a.curriculum.subject.subject_name}</td>
                                                             <td className={tdCls}>{a.curriculum.term.name}</td>
@@ -379,7 +409,19 @@ const TeacherPage: React.FC = () => {
                                                                     {a.is_excused ? 'Excused' : 'Unexcused'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-3 text-right"><button className={btnDanger} disabled={deleteAbsence.isPending} onClick={() => handleDeleteAbsence(a.absence_id)}>Delete</button></td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    {!a.is_excused && (
+                                                                        <button
+                                                                            className="px-2 py-1 text-xs font-medium rounded border border-yellow-300 dark:border-yellow-700 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 cursor-pointer bg-transparent transition-colors"
+                                                                            disabled={excuseAbsence.isPending}
+                                                                            onClick={() => handleExcuseAbsence(a.absence_id)}>
+                                                                            Excuse
+                                                                        </button>
+                                                                    )}
+                                                                    <button className={btnDanger} onClick={() => handleDeleteAbsence(a.absence_id)}>Delete</button>
+                                                                </div>
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -453,7 +495,7 @@ const TeacherPage: React.FC = () => {
                                                     </td>
                                                     <td className={tdCls}>{row.first_name} {row.last_name}</td>
                                                     <td className="px-4 py-2">
-                                                        <input type="number" min={2} max={6} step={0.01} placeholder="e.g. 5.50"
+                                                        <input type="number" min={2} max={6} step={0.01}
                                                             className={`${inputCls} max-w-[120px]`}
                                                             value={row.grade_value}
                                                             disabled={!row.include}

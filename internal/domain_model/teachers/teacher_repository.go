@@ -17,6 +17,7 @@ type ITeacherRepository interface {
 	GetTeacherById(ctx context.Context, tx pgx.Tx, teacherId int32) (*Teacher, *exceptions.AppError)
 	GetTeacherByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Teacher, *exceptions.AppError)
 	GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teacher, *exceptions.AppError)
+	GetTeachersBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Teacher, *exceptions.AppError)
 	UpdateTeacherSchool(ctx context.Context, tx pgx.Tx, teacherId int32, schoolId int32) *exceptions.AppError
 	DeleteTeacher(ctx context.Context, tx pgx.Tx, teacherId int32) *exceptions.AppError
 }
@@ -195,6 +196,61 @@ func (tr *TeacherRepository) GetTeachers(ctx context.Context, tx pgx.Tx) ([]Teac
 
 		teacher.School = &schools.School{
 			SchoolId:      schoolId,
+			SchoolName:    schoolName,
+			SchoolAddress: schoolAddress,
+		}
+
+		teachers = append(teachers, teacher)
+	}
+
+	if err = rows.Err(); err != nil {
+		tr.logger.Error("Error iterating teachers rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return teachers, nil
+}
+
+func (tr *TeacherRepository) GetTeachersBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Teacher, *exceptions.AppError) {
+	sql := `
+		SELECT t.teacher_id, t.school_id, t.user_id, u.first_name, u.last_name, u.email,
+		       s.school_id, s.school_name, s.school_address
+		FROM teachers t
+		INNER JOIN users u ON t.user_id = u.user_id
+		INNER JOIN schools s ON t.school_id = s.school_id
+		WHERE t.school_id = $1;
+	`
+
+	var teachers []Teacher
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sql, schoolId)
+	} else {
+		rows, err = tr.db.Pool.Query(ctx, sql, schoolId)
+	}
+
+	if err != nil {
+		tr.logger.Error("Failed to get teachers by school_id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var teacher Teacher
+		var sId int32
+		var schoolName, schoolAddress string
+
+		err = rows.Scan(&teacher.TeacherId, &sId, &teacher.UserId, &teacher.FirstName, &teacher.LastName, &teacher.Email,
+			&sId, &schoolName, &schoolAddress)
+		if err != nil {
+			tr.logger.Error("Failed to scan teacher row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+
+		teacher.School = &schools.School{
+			SchoolId:      sId,
 			SchoolName:    schoolName,
 			SchoolAddress: schoolAddress,
 		}

@@ -20,6 +20,21 @@ export const useGetParents = (): UseQueryResult<Parent[], Error> =>
         refetchInterval: 5000,
     })
 
+export const useGetParentsBySchoolId = (schoolId: number | undefined): UseQueryResult<Parent[], Error> =>
+    useQuery<Parent[], Error>({
+        queryKey: ['parents-school', schoolId],
+        queryFn: async () => {
+            try {
+                const { data } = await axiosInstance.get<{ data: Parent[] }>(`${API_URL}/parents/school/${schoolId}`)
+                return data.data ?? []
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        enabled: !!schoolId,
+        refetchInterval: 5000,
+    })
+
 export const useGetParentByUserId = (userId: number | undefined): UseQueryResult<Parent, Error> =>
     useQuery<Parent, Error>({
         queryKey: ['parent-user', userId],

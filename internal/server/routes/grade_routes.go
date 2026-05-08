@@ -44,7 +44,13 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradesHandler(writer, gradeSvc, logger),
 			logging,
-			//requireAdmin,
+		),
+	)
+
+	s.Handle("GET /api/student/{student_id}/grades",
+		middleware.Chain(
+			handlers.GetGradesByStudentIdHandler(writer, gradeSvc, logger),
+			logging,
 		),
 	)
 

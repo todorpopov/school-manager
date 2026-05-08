@@ -15,6 +15,7 @@ type IStudentService interface {
 	GetStudentById(ctx context.Context, tx pgx.Tx, studentId int32) (*Student, *exceptions.AppError)
 	GetStudentByUserId(ctx context.Context, tx pgx.Tx, userId int32) (*Student, *exceptions.AppError)
 	GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError)
+	GetStudentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Student, *exceptions.AppError)
 	GetStudentsByTeacherId(ctx context.Context, tx pgx.Tx, teacherId int32) ([]Student, *exceptions.AppError)
 	UpdateStudent(ctx context.Context, tx pgx.Tx, updateStudent *UpdateStudent) (*Student, *exceptions.AppError)
 	DeleteStudent(ctx context.Context, tx pgx.Tx, studentId int32) *exceptions.AppError
@@ -137,6 +138,31 @@ func (ss *StudentService) GetStudentByUserId(ctx context.Context, tx pgx.Tx, use
 
 func (ss *StudentService) GetStudents(ctx context.Context, tx pgx.Tx) ([]Student, *exceptions.AppError) {
 	students, err := ss.studentRepo.GetStudents(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(students) > 0 {
+		userIds := make([]int32, len(students))
+		for i := range students {
+			userIds[i] = students[i].UserId
+		}
+
+		rolesMap, rolesErr := ss.userSvc.GetUsersRoles(ctx, tx, userIds)
+		if rolesErr != nil {
+			return nil, rolesErr
+		}
+
+		for i := range students {
+			students[i].Roles = rolesMap[students[i].UserId]
+		}
+	}
+
+	return students, nil
+}
+
+func (ss *StudentService) GetStudentsBySchoolId(ctx context.Context, tx pgx.Tx, schoolId int32) ([]Student, *exceptions.AppError) {
+	students, err := ss.studentRepo.GetStudentsBySchoolId(ctx, tx, schoolId)
 	if err != nil {
 		return nil, err
 	}

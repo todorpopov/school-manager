@@ -22,6 +22,7 @@ type IGradeRepository interface {
 	BulkCreateGrades(ctx context.Context, tx pgx.Tx, entries []CreateGrade) ([]Grade, *exceptions.AppError)
 	GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError)
 	GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError)
+	GetGradesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Grade, *exceptions.AppError)
 	DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError
 }
 
@@ -259,6 +260,100 @@ func (gr *GradeRepository) GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *
 	}
 
 	return grades, nil
+}
+
+func (gr *GradeRepository) GetGradesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Grade, *exceptions.AppError) {
+	sqlStmt := `
+		SELECT
+			g.grade_id,
+			g.grade_value,
+			g.grade_date,
+			s.student_id, s.user_id, u.first_name, u.last_name, u.email,
+			cl.class_id AS student_class_id, cl.grade_level AS student_grade_level, cl.class_name AS student_class_name,
+			c.curriculum_id, c.teacher_id,
+			ccl.class_id AS curriculum_class_id, ccl.grade_level AS curriculum_grade_level, ccl.class_name AS curriculum_class_name,
+			subj.subject_id, subj.subject_name,
+			t.term_id, t.name
+		FROM grades g
+		INNER JOIN students s ON g.student_id = s.student_id
+		INNER JOIN users u ON s.user_id = u.user_id
+		LEFT JOIN classes cl ON s.class_id = cl.class_id
+		INNER JOIN curricula c ON g.curriculum_id = c.curriculum_id
+		INNER JOIN classes ccl ON c.class_id = ccl.class_id
+		INNER JOIN subjects subj ON c.subject_id = subj.subject_id
+		INNER JOIN terms t ON c.term_id = t.term_id
+		WHERE g.student_id = $1
+		ORDER BY g.grade_date DESC;
+	`
+
+	var result []Grade
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sqlStmt, studentId)
+	} else {
+		rows, err = gr.db.Pool.Query(ctx, sqlStmt, studentId)
+	}
+
+	if err != nil {
+		gr.logger.Error("Failed to get grades by student_id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var grade Grade
+		var student students.Student
+		var studentClassId sql.NullInt32
+		var studentGradeLevel sql.NullInt32
+		var studentClassName sql.NullString
+		var curriculum curricula.Curriculum
+		var curriculumClass classes.Class
+		var subject subjects.Subject
+		var term terms.Term
+		var teacherId *int32
+
+		err = rows.Scan(
+			&grade.GradeId,
+			&grade.GradeValue,
+			&grade.GradeDate,
+			&student.StudentId, &student.UserId, &student.FirstName, &student.LastName, &student.Email,
+			&studentClassId, &studentGradeLevel, &studentClassName,
+			&curriculum.CurriculumId, &teacherId,
+			&curriculumClass.ClassId, &curriculumClass.GradeLevel, &curriculumClass.ClassName,
+			&subject.SubjectId, &subject.SubjectName,
+			&term.TermId, &term.Name,
+		)
+		if err != nil {
+			gr.logger.Error("Failed to scan grade row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+
+		if studentClassId.Valid {
+			student.Class = &classes.Class{
+				ClassId:    studentClassId.Int32,
+				GradeLevel: studentGradeLevel.Int32,
+				ClassName:  studentClassName.String,
+			}
+		}
+
+		curriculum.Class = &curriculumClass
+		curriculum.Subject = &subject
+		curriculum.Term = &term
+		curriculum.TeacherId = teacherId
+		grade.Student = student
+		grade.Curriculum = curriculum
+
+		result = append(result, grade)
+	}
+
+	if err = rows.Err(); err != nil {
+		gr.logger.Error("Error iterating grades rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return result, nil
 }
 
 func (gr *GradeRepository) DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError {

@@ -20,6 +20,21 @@ export const useGetTeachers = (): UseQueryResult<Teacher[], Error> =>
         refetchInterval: 5000,
     })
 
+export const useGetTeachersBySchoolId = (schoolId: number | undefined): UseQueryResult<Teacher[], Error> =>
+    useQuery<Teacher[], Error>({
+        queryKey: ['teachers-school', schoolId],
+        queryFn: async () => {
+            try {
+                const { data } = await axiosInstance.get<{ data: Teacher[] }>(`${API_URL}/teachers/school/${schoolId}`)
+                return data.data ?? []
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        enabled: !!schoolId,
+        refetchInterval: 5000,
+    })
+
 export const useGetTeacherByUserId = (userId: number | undefined): UseQueryResult<Teacher, Error> =>
     useQuery<Teacher, Error>({
         queryKey: ['teacher-user', userId],

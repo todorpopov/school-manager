@@ -87,6 +87,26 @@ func GetGradesHandler(hw *writer.HttpWriter, gradeSvc grades.IGradeService, logg
 	}
 }
 
+func GetGradesByStudentIdHandler(hw *writer.HttpWriter, gradeSvc grades.IGradeService, logger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		studentId, err := strconv.Atoi(r.PathValue("student_id"))
+		if err != nil {
+			hw.WriteError(w, exceptions.NewRequestValidationError("Invalid student ID"))
+			return
+		}
+
+		result, err1 := gradeSvc.GetGradesByStudentId(r.Context(), nil, int32(studentId))
+		if err1 != nil {
+			logger.Error("Failed to get grades by student ID", zap.Int("student_id", studentId), zap.Error(err1))
+			hw.WriteError(w, err1)
+			return
+		}
+
+		resp := internal.NewApiResponse(false, "Grades retrieved successfully", result)
+		hw.WriteResponse(w, http.StatusOK, resp)
+	}
+}
+
 func DeleteGradeHandler(hw *writer.HttpWriter, gradeSvc grades.IGradeService, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		gradeId, err := strconv.Atoi(r.PathValue("grade_id"))

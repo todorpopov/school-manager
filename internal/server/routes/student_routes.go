@@ -42,12 +42,18 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	)
 
 	s.Handle("GET /api/students",
-		middleware.Chain(
-			handlers.GetStudentsHandler(writer, studentSvc, logger),
-			logging,
-			//requireAdmin,
-		),
-	)
+			middleware.Chain(
+				handlers.GetStudentsHandler(writer, studentSvc, logger),
+				logging,
+			),
+		)
+
+	s.Handle("GET /api/students/school/{school_id}",
+			middleware.Chain(
+				handlers.GetStudentsBySchoolIdHandler(writer, studentSvc, logger),
+				logging,
+			),
+		)
 
 	s.Handle("PUT /api/student/{student_id}",
 		middleware.Chain(

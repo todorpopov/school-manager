@@ -13,6 +13,7 @@ type IGradeService interface {
 	BulkCreateGrades(ctx context.Context, tx pgx.Tx, payload *BulkCreateGrades) ([]Grade, *exceptions.AppError)
 	GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int32) (*Grade, *exceptions.AppError)
 	GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError)
+	GetGradesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Grade, *exceptions.AppError)
 	DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError
 }
 
@@ -56,6 +57,13 @@ func (gs *GradeService) GetGradeById(ctx context.Context, tx pgx.Tx, gradeId int
 
 func (gs *GradeService) GetGrades(ctx context.Context, tx pgx.Tx) ([]Grade, *exceptions.AppError) {
 	return gs.gradeRepo.GetGrades(ctx, tx)
+}
+
+func (gs *GradeService) GetGradesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Grade, *exceptions.AppError) {
+	if msg := domain_model.ValidateId(studentId); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid student ID", map[string]string{"student_id": msg})
+	}
+	return gs.gradeRepo.GetGradesByStudentId(ctx, tx, studentId)
 }
 
 func (gs *GradeService) DeleteGrade(ctx context.Context, tx pgx.Tx, gradeId int32) *exceptions.AppError {

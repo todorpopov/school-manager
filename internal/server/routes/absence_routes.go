@@ -44,7 +44,13 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsencesHandler(writer, absenceSvc, logger),
 			logging,
-			//requireAdmin,
+		),
+	)
+
+	s.Handle("GET /api/student/{student_id}/absences",
+		middleware.Chain(
+			handlers.GetAbsencesByStudentIdHandler(writer, absenceSvc, logger),
+			logging,
 		),
 	)
 
@@ -52,7 +58,13 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.DeleteAbsenceHandler(writer, absenceSvc, logger),
 			logging,
-			//requireAdmin,
+		),
+	)
+
+	s.Handle("PATCH /api/absence/{absence_id}/excuse",
+		middleware.Chain(
+			handlers.ExcuseAbsenceHandler(writer, absenceSvc, logger),
+			logging,
 		),
 	)
 }

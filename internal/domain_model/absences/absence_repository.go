@@ -22,6 +22,8 @@ type IAbsenceRepository interface {
 	BulkCreateAbsences(ctx context.Context, tx pgx.Tx, entries []CreateAbsence) ([]Absence, *exceptions.AppError)
 	GetAbsenceById(ctx context.Context, tx pgx.Tx, absenceId int32) (*Absence, *exceptions.AppError)
 	GetAbsences(ctx context.Context, tx pgx.Tx) ([]Absence, *exceptions.AppError)
+	GetAbsencesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Absence, *exceptions.AppError)
+	ExcuseAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
 	DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError
 }
 
@@ -259,6 +261,124 @@ func (ar *AbsenceRepository) GetAbsences(ctx context.Context, tx pgx.Tx) ([]Abse
 	}
 
 	return absences, nil
+}
+
+func (ar *AbsenceRepository) GetAbsencesByStudentId(ctx context.Context, tx pgx.Tx, studentId int32) ([]Absence, *exceptions.AppError) {
+	sqlStmt := `
+		SELECT
+			a.absence_id,
+			a.absence_date,
+			a.is_excused,
+			s.student_id, s.user_id, u.first_name, u.last_name, u.email,
+			cl.class_id AS student_class_id, cl.grade_level AS student_grade_level, cl.class_name AS student_class_name,
+			c.curriculum_id, c.teacher_id,
+			ccl.class_id AS curriculum_class_id, ccl.grade_level AS curriculum_grade_level, ccl.class_name AS curriculum_class_name,
+			subj.subject_id, subj.subject_name,
+			t.term_id, t.name
+		FROM absences a
+		INNER JOIN students s ON a.student_id = s.student_id
+		INNER JOIN users u ON s.user_id = u.user_id
+		LEFT JOIN classes cl ON s.class_id = cl.class_id
+		INNER JOIN curricula c ON a.curriculum_id = c.curriculum_id
+		INNER JOIN classes ccl ON c.class_id = ccl.class_id
+		INNER JOIN subjects subj ON c.subject_id = subj.subject_id
+		INNER JOIN terms t ON c.term_id = t.term_id
+		WHERE a.student_id = $1
+		ORDER BY a.absence_date DESC;
+	`
+
+	var result []Absence
+	var err error
+	var rows pgx.Rows
+
+	if tx != nil {
+		rows, err = tx.Query(ctx, sqlStmt, studentId)
+	} else {
+		rows, err = ar.db.Pool.Query(ctx, sqlStmt, studentId)
+	}
+
+	if err != nil {
+		ar.logger.Error("Failed to get absences by student_id", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var absence Absence
+		var student students.Student
+		var studentClassId sql.NullInt32
+		var studentGradeLevel sql.NullInt32
+		var studentClassName sql.NullString
+		var curriculum curricula.Curriculum
+		var curriculumClass classes.Class
+		var subject subjects.Subject
+		var term terms.Term
+		var teacherId *int32
+
+		err = rows.Scan(
+			&absence.AbsenceId,
+			&absence.AbsenceDate,
+			&absence.IsExcused,
+			&student.StudentId, &student.UserId, &student.FirstName, &student.LastName, &student.Email,
+			&studentClassId, &studentGradeLevel, &studentClassName,
+			&curriculum.CurriculumId, &teacherId,
+			&curriculumClass.ClassId, &curriculumClass.GradeLevel, &curriculumClass.ClassName,
+			&subject.SubjectId, &subject.SubjectName,
+			&term.TermId, &term.Name,
+		)
+		if err != nil {
+			ar.logger.Error("Failed to scan absence row", zap.Error(err))
+			return nil, exceptions.PgErrorToAppError(err)
+		}
+
+		if studentClassId.Valid {
+			student.Class = &classes.Class{
+				ClassId:    studentClassId.Int32,
+				GradeLevel: studentGradeLevel.Int32,
+				ClassName:  studentClassName.String,
+			}
+		}
+
+		curriculum.Class = &curriculumClass
+		curriculum.Subject = &subject
+		curriculum.Term = &term
+		curriculum.TeacherId = teacherId
+		absence.Student = student
+		absence.Curriculum = curriculum
+
+		result = append(result, absence)
+	}
+
+	if err = rows.Err(); err != nil {
+		ar.logger.Error("Error iterating absences rows", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	return result, nil
+}
+
+func (ar *AbsenceRepository) ExcuseAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError {
+	if msg := domain_model.ValidateId(absenceId); msg != "" {
+		return exceptions.NewValidationError("Invalid absence ID", map[string]string{"absence_id": msg})
+	}
+
+	sqlStmt := `UPDATE absences SET is_excused = true WHERE absence_id = $1;`
+
+	var err error
+	var cmdTag pgconn.CommandTag
+	if tx != nil {
+		cmdTag, err = tx.Exec(ctx, sqlStmt, absenceId)
+	} else {
+		cmdTag, err = ar.db.Pool.Exec(ctx, sqlStmt, absenceId)
+	}
+	if err != nil {
+		ar.logger.Error("Failed to excuse absence", zap.Error(err))
+		return exceptions.PgErrorToAppError(err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return exceptions.NewNotFoundError("Absence not found")
+	}
+	return nil
 }
 
 func (ar *AbsenceRepository) DeleteAbsence(ctx context.Context, tx pgx.Tx, absenceId int32) *exceptions.AppError {

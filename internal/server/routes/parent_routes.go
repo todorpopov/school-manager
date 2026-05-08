@@ -45,7 +45,13 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.GetParentsHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+		),
+	)
+
+	s.Handle("GET /api/parents/school/{school_id}",
+		middleware.Chain(
+			handlers.GetParentsBySchoolIdHandler(writer, parentSvc, logger),
+			logging,
 		),
 	)
 
