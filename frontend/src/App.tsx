@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import AdminRegisterPage from './pages/AdminRegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import StatisticsPage from './pages/admin/StatisticsPage'
 import ManagementPage from './pages/admin/ManagementPage'
@@ -32,6 +33,7 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/admin/register" element={<AdminRegisterPage />} />
                     <Route
                         element={
                             <ProtectedRoute>

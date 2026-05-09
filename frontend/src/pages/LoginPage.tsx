@@ -141,6 +141,12 @@ export default function LoginPage() {
                     Sign up
                 </Link>
             </p>
+            <p className="mt-2 text-center text-sm text-slate-500 dark:text-slate-400">
+                System administrator?{' '}
+                <Link to="/admin/register" className="text-indigo-500 hover:underline font-medium">
+                    Register as admin
+                </Link>
+            </p>
             {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
         </AuthLayout>
     )

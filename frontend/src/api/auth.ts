@@ -95,3 +95,40 @@ export async function apiRegister(
     //
     // return json.data as AuthResponse
 }
+
+export async function apiRegisterAdmin(
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+    systemAuthToken: string,
+): Promise<AuthResponse> {
+    const res = await fetch(`${BASE}/auth/register-admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            password,
+            system_auth_token: systemAuthToken,
+        }),
+    })
+
+    const json = await res.json()
+
+    if (json.error) {
+        throw new Error(json.message)
+    }
+
+    const raw = json.data
+    return {
+        sessionId: raw.sessionId,
+        userId: raw.user_id,
+        roles: raw.roles,
+        firstName: raw.first_name,
+        lastName: raw.last_name,
+        email: raw.email,
+    } as AuthResponse
+}
+
