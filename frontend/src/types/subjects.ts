@@ -4,3 +4,6 @@ export interface Subject {
     subject_name: string
 }
 
+export interface CreateSubjectPayload {
+    subject_name: string
+}
