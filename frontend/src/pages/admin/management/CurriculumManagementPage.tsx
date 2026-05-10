@@ -90,6 +90,7 @@ const CurriculumManagementPage: React.FC = () => {
                 }}
                 onUpdate={async () => { }}
                 onDelete={async (id) => { await deleteMutation.mutateAsync(id as number) }}
+                hideEdit={true}
             />
         </main>
     )

@@ -16,6 +16,7 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
     isLoading = false,
     error = null,
     readOnly = false,
+    hideEdit = false,
 }: ResourceManagerProps<T>) {
     const [mode, setMode] = useState<Mode>('list')
     const [selected, setSelected] = useState<T | null>(null)
@@ -122,12 +123,14 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
                                          <td className="px-4 py-3">
                                             {!readOnly && (
                                             <div className="flex gap-2 justify-end">
-                                                <button
-                                                    onClick={() => openEdit(row)}
-                                                    className="px-3 py-1 text-xs font-medium rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer bg-transparent transition-colors"
-                                                >
-                                                    Edit
-                                                </button>
+                                                {!hideEdit && (
+                                                    <button
+                                                        onClick={() => openEdit(row)}
+                                                        className="px-3 py-1 text-xs font-medium rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer bg-transparent transition-colors"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => openDelete(row)}
                                                     className="px-3 py-1 text-xs font-medium rounded border border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer bg-transparent transition-colors"

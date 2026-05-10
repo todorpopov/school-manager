@@ -11,6 +11,7 @@ import StatisticsPage from './pages/admin/StatisticsPage'
 import ManagementPage from './pages/admin/ManagementPage'
 import SchoolManagementPage from './pages/admin/management/SchoolManagementPage'
 import PrincipalManagementPage from './pages/admin/management/PrincipalManagementPage'
+import ClassManagementPage from './pages/admin/management/ClassManagementPage'
 import StudentsManagementPage from './pages/admin/management/StudentsManagementPage'
 import TeachersManagementPage from './pages/admin/management/TeachersManagementPage'
 import ParentsManagementPage from './pages/admin/management/ParentsManagementPage'
@@ -60,6 +61,11 @@ function App() {
                         <Route path="/admin/management/principal" element={
                             <ProtectedRoute allowedRoles={['ADMIN']}>
                                 <PrincipalManagementPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin/management/classes" element={
+                            <ProtectedRoute allowedRoles={['ADMIN']}>
+                                <ClassManagementPage />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin/management/students" element={

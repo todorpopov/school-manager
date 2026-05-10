@@ -48,5 +48,7 @@ export interface ResourceManagerProps<T extends { [key: string]: unknown }> {
     error?: string | null
     /** Hide all create/edit/delete actions (view-only mode) */
     readOnly?: boolean
+    /** Hide only the edit button (keep create and delete) */
+    hideEdit?: boolean
 }
 
