@@ -142,6 +142,17 @@ export function ResourceForm<T extends { [key: string]: unknown }>({
                         })}
                     </div>
                 )
+            case 'date':
+                return (
+                    <input
+                        id={String(field.key)}
+                        type="date"
+                        value={(value as string) ?? ''}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        className={inputCls(hasError)}
+                    />
+                )
             default:
                 return (
                     <input

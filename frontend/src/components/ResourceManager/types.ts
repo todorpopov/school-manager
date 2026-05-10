@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'email' | 'password' | 'number' | 'select' | 'multiselect' | 'textarea'
+export type FieldType = 'text' | 'email' | 'password' | 'number' | 'date' | 'select' | 'multiselect' | 'textarea'
 
 export interface SelectOption {
     label: string

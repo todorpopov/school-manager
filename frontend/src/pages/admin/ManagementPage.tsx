@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import type { IconType } from 'react-icons'
-import { FaSchool, FaUserTie, FaUserGraduate, FaChalkboardTeacher, FaUserFriends, FaBookOpen, FaDoorOpen } from 'react-icons/fa'
+import { FaSchool, FaUserTie, FaUserGraduate, FaChalkboardTeacher, FaUserFriends, FaBookOpen, FaDoorOpen, FaCalendarAlt } from 'react-icons/fa'
 
 const RESOURCES: { label: string; description: string; path: string; Icon: IconType }[] = [
     { label: 'School', description: 'Manage school information and settings', path: '/admin/management/school', Icon: FaSchool },
@@ -9,6 +9,7 @@ const RESOURCES: { label: string; description: string; path: string; Icon: IconT
     { label: 'Students', description: 'Manage student records', path: '/admin/management/students', Icon: FaUserGraduate },
     { label: 'Parents', description: 'Manage parent contacts', path: '/admin/management/parents', Icon: FaUserFriends },
     { label: 'Classes', description: 'Manage school classes', path: '/admin/management/classes', Icon: FaDoorOpen },
+    { label: 'Terms', description: 'Manage academic terms', path: '/admin/management/terms', Icon: FaCalendarAlt },
     { label: 'Curriculum', description: 'Manage subjects and curriculum', path: '/admin/management/curriculum', Icon: FaBookOpen },
 ]
 
