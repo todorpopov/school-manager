@@ -8,6 +8,7 @@ import { useGetClasses } from '../../../hooks/useClasses.ts'
 import { useGetSubjects } from '../../../hooks/useSubjects.ts'
 import { useGetTeachers } from '../../../hooks/useTeachers.ts'
 import { useGetTerms } from '../../../hooks/useTerms.ts'
+import { useGetSchools } from '../../../hooks/useSchools.ts'
 import { useToast } from '../../../hooks/useToast'
 
 const CurriculumManagementPage: React.FC = () => {
@@ -16,16 +17,21 @@ const CurriculumManagementPage: React.FC = () => {
     const { data: subjects = [] } = useGetSubjects()
     const { data: teachers = [] } = useGetTeachers()
     const { data: terms = [] } = useGetTerms()
+    const { data: schools = [] } = useGetSchools()
 
     const createMutation = useCreateCurriculum()
     const deleteMutation = useDeleteCurriculum()
 
     const { toast, show, dismiss } = useToast()
 
-    const classOptions = classes.map((c) => ({
-        label: `${c.grade_level}${c.class_name}`,
-        value: c.class_id,
-    }))
+    const classOptions = classes.map((c) => {
+        const school = schools.find(s => s.school_id === c.school_id)
+        const schoolName = school?.school_name || `School ${c.school_id}`
+        return {
+            label: `${c.grade_level}${c.class_name} - ${schoolName}`,
+            value: c.class_id,
+        }
+    })
     const subjectOptions = subjects.map((s) => ({
         label: s.subject_name,
         value: s.subject_id,

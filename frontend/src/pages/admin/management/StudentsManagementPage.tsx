@@ -122,10 +122,10 @@ const StudentsManagementPage: React.FC = () => {
         parent_ids: (studentParentsMap[s.student_id] ?? []).map(p => String(p.parent_id)),
     }))
 
-    const resolveClassId = (gradeLevel: unknown, className: unknown): number | null => {
-        if (!gradeLevel || !className) return null
+    const resolveClassId = (schoolId: unknown, gradeLevel: unknown, className: unknown): number | null => {
+        if (!schoolId || !gradeLevel || !className) return null
         const match = classes.find(
-            (c) => c.grade_level === Number(gradeLevel) && c.class_name === String(className)
+            (c) => c.school_id === Number(schoolId) && c.grade_level === Number(gradeLevel) && c.class_name === String(className)
         )
         return match?.class_id ?? null
     }
@@ -146,7 +146,7 @@ const StudentsManagementPage: React.FC = () => {
                         last_name: String(values.last_name ?? ''),
                         email: String(values.email ?? ''),
                         password: String(values.password ?? ''),
-                        class_id: resolveClassId(values.grade_level, values.class_name),
+                        class_id: resolveClassId(values.school_id, values.grade_level, values.class_name),
                     })
                     const parentIds = (values.parent_ids as string[]) ?? []
                     if (student && parentIds.length) {
@@ -161,7 +161,7 @@ const StudentsManagementPage: React.FC = () => {
                             first_name: String(values.first_name ?? ''),
                             last_name: String(values.last_name ?? ''),
                             email: String(values.email ?? ''),
-                            class_id: resolveClassId(values.grade_level, values.class_name),
+                            class_id: resolveClassId(values.school_id, values.grade_level, values.class_name),
                         },
                     })
                     await syncParents(id as number, (values.parent_ids as string[]) ?? [])
