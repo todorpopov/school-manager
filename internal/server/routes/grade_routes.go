@@ -16,7 +16,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 
 	logging := middleware.Logging(logger)
 	requireAdminOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER")
-	requireAdminTeacherOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT")
+	requireAdminTeacherParentOrStudent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT", "STUDENT")
 
 	s.Handle("POST /api/grades/bulk",
 		middleware.Chain(
@@ -38,7 +38,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradeByIdHandler(writer, gradeSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 
@@ -46,7 +46,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradesHandler(writer, gradeSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 
@@ -54,7 +54,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradesByStudentIdHandler(writer, gradeSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 

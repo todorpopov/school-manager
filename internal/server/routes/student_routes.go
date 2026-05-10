@@ -18,6 +18,7 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
 	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
 	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
+	requireAdminDirectorTeacherOrStudent := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER", "STUDENT")
 
 	s.Handle("POST /api/student",
 		middleware.Chain(
@@ -39,7 +40,7 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetStudentByUserIdHandler(writer, studentSvc, logger),
 			logging,
-			requireAdminDirectorOrTeacher,
+			requireAdminDirectorTeacherOrStudent,
 		),
 	)
 

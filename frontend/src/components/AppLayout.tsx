@@ -16,6 +16,7 @@ export default function AppLayout() {
     const isPrincipal = auth?.activeRole === 'DIRECTOR'
     const isParent = auth?.activeRole === 'PARENT'
     const isTeacher = auth?.activeRole === 'TEACHER'
+    const isStudent = auth?.activeRole === 'STUDENT'
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
@@ -53,6 +54,13 @@ export default function AppLayout() {
                         <nav className="flex items-center gap-4">
                             <NavLink to="/teacher" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-100'}`}>
                                 My Students
+                            </NavLink>
+                        </nav>
+                    )}
+                    {isStudent && (
+                        <nav className="flex items-center gap-4">
+                            <NavLink to="/student" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-100'}`}>
+                                My Grades
                             </NavLink>
                         </nav>
                     )}

@@ -49,6 +49,20 @@ export const useGetStudentsByTeacherId = (teacherId: number | undefined): UseQue
         enabled: !!teacherId,
     })
 
+export const useGetStudentByUserId = (userId: number | undefined): UseQueryResult<Student, Error> =>
+    useQuery<Student, Error>({
+        queryKey: ["student-by-user", userId],
+        queryFn: async () => {
+            try {
+                const { data } = await axiosInstance.get<{ data: Student }>(`${API_URL}/student-by-user/${userId}`)
+                return data.data
+            } catch (err) {
+                throw new Error(parseApiError(err))
+            }
+        },
+        enabled: !!userId,
+    })
+
 export const useCreateStudent = () => {
     const queryClient = useQueryClient()
     return useMutation({

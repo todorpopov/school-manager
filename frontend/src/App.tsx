@@ -25,6 +25,7 @@ import PrincipalTeachersPage from './pages/principal/PrincipalTeachersPage'
 import PrincipalStudentsPage from './pages/principal/PrincipalStudentsPage'
 import PrincipalParentsPage from './pages/principal/PrincipalParentsPage'
 import ParentPage from './pages/parent/ParentPage'
+import StudentPage from './pages/student/StudentPage'
 import TeacherPage from './pages/teacher/TeacherPage.tsx';
 
 const queryClient = new QueryClient()
@@ -133,6 +134,11 @@ function App() {
                         <Route path="/parent" element={
                             <ProtectedRoute allowedRoles={['PARENT']}>
                                 <ParentPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/student" element={
+                            <ProtectedRoute allowedRoles={['STUDENT']}>
+                                <StudentPage />
                             </ProtectedRoute>
                         } />
                         <Route path="/teacher" element={

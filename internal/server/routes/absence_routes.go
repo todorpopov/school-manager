@@ -16,7 +16,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 
 	logging := middleware.Logging(logger)
 	requireAdminOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER")
-	requireAdminTeacherOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT")
+	requireAdminTeacherParentOrStudent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT", "STUDENT")
 
 	s.Handle("POST /api/absences/bulk",
 		middleware.Chain(
@@ -38,7 +38,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsenceByIdHandler(writer, absenceSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 
@@ -46,7 +46,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsencesHandler(writer, absenceSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 
@@ -54,7 +54,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsencesByStudentIdHandler(writer, absenceSvc, logger),
 			logging,
-			requireAdminTeacherOrParent,
+			requireAdminTeacherParentOrStudent,
 		),
 	)
 
