@@ -15,13 +15,14 @@ func RegisterTermRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 	logger.Info("Registering term routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
 
 	s.Handle("POST /api/term",
 		middleware.Chain(
 			handlers.CreateTermHandler(writer, termSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +30,7 @@ func RegisterTermRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.GetTermByIdHandler(writer, termSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -37,7 +38,7 @@ func RegisterTermRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.GetTermsHandler(writer, termSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -45,7 +46,7 @@ func RegisterTermRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 		middleware.Chain(
 			handlers.DeleteTermHandler(writer, termSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

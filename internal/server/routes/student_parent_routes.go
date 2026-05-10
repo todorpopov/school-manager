@@ -15,13 +15,14 @@ func RegisterStudentParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, lo
 	logger.Info("Registering student-parent relationship routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminDirectorOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "PARENT")
 
 	s.Handle("POST /api/student-parent/student/{student_id}/parent/{parent_id}",
 		middleware.Chain(
 			handlers.LinkParentToStudentHandler(writer, studentParentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +30,7 @@ func RegisterStudentParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, lo
 		middleware.Chain(
 			handlers.UnlinkParentFromStudentHandler(writer, studentParentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -37,7 +38,7 @@ func RegisterStudentParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, lo
 		middleware.Chain(
 			handlers.GetParentsForStudentHandler(writer, studentParentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrParent,
 		),
 	)
 
@@ -45,7 +46,7 @@ func RegisterStudentParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, lo
 		middleware.Chain(
 			handlers.GetStudentsForParentHandler(writer, studentParentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrParent,
 		),
 	)
 }

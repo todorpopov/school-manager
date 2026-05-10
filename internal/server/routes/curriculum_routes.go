@@ -15,13 +15,14 @@ func RegisterCurriculumRoutes(s *http.ServeMux, writer *writer.HttpWriter, logge
 	logger.Info("Registering curriculum routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
 
 	s.Handle("POST /api/curriculum",
 		middleware.Chain(
 			handlers.CreateCurriculumHandler(writer, curriculumSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +30,7 @@ func RegisterCurriculumRoutes(s *http.ServeMux, writer *writer.HttpWriter, logge
 		middleware.Chain(
 			handlers.GetCurriculumByIdHandler(writer, curriculumSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -37,7 +38,7 @@ func RegisterCurriculumRoutes(s *http.ServeMux, writer *writer.HttpWriter, logge
 		middleware.Chain(
 			handlers.GetCurriculaHandler(writer, curriculumSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -45,7 +46,7 @@ func RegisterCurriculumRoutes(s *http.ServeMux, writer *writer.HttpWriter, logge
 		middleware.Chain(
 			handlers.DeleteCurriculumHandler(writer, curriculumSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

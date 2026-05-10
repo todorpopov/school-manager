@@ -15,13 +15,14 @@ func RegisterTeacherSubjectRoutes(s *http.ServeMux, writer *writer.HttpWriter, l
 	logger.Info("Registering teacher-subject relationship routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
 
 	s.Handle("POST /api/teacher-subject/teacher/{teacher_id}/subject/{subject_id}",
 		middleware.Chain(
 			handlers.LinkSubjectToTeacherHandler(writer, teacherSubjectSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +30,7 @@ func RegisterTeacherSubjectRoutes(s *http.ServeMux, writer *writer.HttpWriter, l
 		middleware.Chain(
 			handlers.UnlinkSubjectFromTeacherHandler(writer, teacherSubjectSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -37,7 +38,7 @@ func RegisterTeacherSubjectRoutes(s *http.ServeMux, writer *writer.HttpWriter, l
 		middleware.Chain(
 			handlers.GetSubjectsForTeacherHandler(writer, teacherSubjectSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrDirector,
 		),
 	)
 
@@ -45,7 +46,7 @@ func RegisterTeacherSubjectRoutes(s *http.ServeMux, writer *writer.HttpWriter, l
 		middleware.Chain(
 			handlers.GetTeachersForSubjectHandler(writer, teacherSubjectSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrDirector,
 		),
 	)
 }

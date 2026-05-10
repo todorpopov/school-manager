@@ -21,13 +21,13 @@ func RegisterReportingRoutes(
 	logger.Info("Registering reporting routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
 
 	s.Handle("POST /api/reporting",
 		middleware.Chain(
 			handlers.ReportingQueryHandler(writer, rptSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrDirector,
 		),
 	)
 }

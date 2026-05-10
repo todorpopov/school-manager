@@ -15,13 +15,14 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 	logger.Info("Registering class routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
 
 	s.Handle("POST /api/class",
 		middleware.Chain(
 			handlers.CreateClassHandler(writer, classSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +30,7 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetClassByIdHandler(writer, classSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -37,7 +38,7 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetClassesHandler(writer, classSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -45,7 +46,7 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetClassesBySchoolIdHandler(writer, classSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -53,7 +54,7 @@ func RegisterClassRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.DeleteClassHandler(writer, classSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

@@ -16,13 +16,15 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	logger.Info("Registering teacher routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
+	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
 
 	s.Handle("POST /api/teacher",
 		middleware.Chain(
 			handlers.CreateTeacherHandler(writer, teacherSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -30,7 +32,7 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetTeacherByIdHandler(writer, teacherSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrDirector,
 		),
 	)
 
@@ -38,29 +40,31 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetTeacherByUserIdHandler(writer, teacherSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
 	s.Handle("GET /api/teachers",
-			middleware.Chain(
-				handlers.GetTeachersHandler(writer, teacherSvc, logger),
-				logging,
-			),
-		)
+		middleware.Chain(
+			handlers.GetTeachersHandler(writer, teacherSvc, logger),
+			logging,
+			requireAdmin,
+		),
+	)
 
 	s.Handle("GET /api/teachers/school/{school_id}",
-			middleware.Chain(
-				handlers.GetTeachersBySchoolIdHandler(writer, teacherSvc, logger),
-				logging,
-			),
-		)
+		middleware.Chain(
+			handlers.GetTeachersBySchoolIdHandler(writer, teacherSvc, logger),
+			logging,
+			requireAdminOrDirector,
+		),
+	)
 
 	s.Handle("GET /api/teacher/{teacher_id}/students",
 		middleware.Chain(
 			handlers.GetStudentsByTeacherIdHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -68,7 +72,7 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.UpdateTeacherHandler(writer, teacherSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -76,7 +80,7 @@ func RegisterTeacherRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.DeleteTeacherHandler(writer, teacherSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

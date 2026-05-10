@@ -15,13 +15,15 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	logger.Info("Registering student routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
+	requireAdminDirectorOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "TEACHER")
 
 	s.Handle("POST /api/student",
 		middleware.Chain(
 			handlers.CreateStudentHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +31,7 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetStudentByIdHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
@@ -37,29 +39,31 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetStudentByUserIdHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrTeacher,
 		),
 	)
 
 	s.Handle("GET /api/students",
-			middleware.Chain(
-				handlers.GetStudentsHandler(writer, studentSvc, logger),
-				logging,
-			),
-		)
+		middleware.Chain(
+			handlers.GetStudentsHandler(writer, studentSvc, logger),
+			logging,
+			requireAdmin,
+		),
+	)
 
 	s.Handle("GET /api/students/school/{school_id}",
-			middleware.Chain(
-				handlers.GetStudentsBySchoolIdHandler(writer, studentSvc, logger),
-				logging,
-			),
-		)
+		middleware.Chain(
+			handlers.GetStudentsBySchoolIdHandler(writer, studentSvc, logger),
+			logging,
+			requireAdminOrDirector,
+		),
+	)
 
 	s.Handle("PUT /api/student/{student_id}",
 		middleware.Chain(
 			handlers.UpdateStudentHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -67,7 +71,7 @@ func RegisterStudentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.DeleteStudentHandler(writer, studentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

@@ -15,20 +15,22 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 	logger.Info("Registering absence routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER")
+	requireAdminTeacherOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT")
 
-        s.Handle("POST /api/absences/bulk",
-                middleware.Chain(
-                        handlers.BulkCreateAbsencesHandler(writer, absenceSvc, logger),
-                        logging,
-                ),
-        )
+	s.Handle("POST /api/absences/bulk",
+		middleware.Chain(
+			handlers.BulkCreateAbsencesHandler(writer, absenceSvc, logger),
+			logging,
+			requireAdminOrTeacher,
+		),
+	)
 
-        s.Handle("POST /api/absence",
+	s.Handle("POST /api/absence",
 		middleware.Chain(
 			handlers.CreateAbsenceHandler(writer, absenceSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrTeacher,
 		),
 	)
 
@@ -36,7 +38,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsenceByIdHandler(writer, absenceSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -44,6 +46,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsencesHandler(writer, absenceSvc, logger),
 			logging,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -51,6 +54,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.GetAbsencesByStudentIdHandler(writer, absenceSvc, logger),
 			logging,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -58,6 +62,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.DeleteAbsenceHandler(writer, absenceSvc, logger),
 			logging,
+			requireAdminOrTeacher,
 		),
 	)
 
@@ -65,6 +70,7 @@ func RegisterAbsenceRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *
 		middleware.Chain(
 			handlers.ExcuseAbsenceHandler(writer, absenceSvc, logger),
 			logging,
+			requireAdminOrTeacher,
 		),
 	)
 }

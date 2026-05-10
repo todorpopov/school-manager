@@ -15,13 +15,15 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 	logger.Info("Registering parent routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrDirector := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR")
+	requireAdminDirectorOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "DIRECTOR", "PARENT")
 
 	s.Handle("POST /api/parent",
 		middleware.Chain(
 			handlers.CreateParentHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -29,7 +31,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.GetParentByIdHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrDirector,
 		),
 	)
 
@@ -37,7 +39,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.GetParentByUserIdHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminDirectorOrParent,
 		),
 	)
 
@@ -45,6 +47,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.GetParentsHandler(writer, parentSvc, logger),
 			logging,
+			requireAdmin,
 		),
 	)
 
@@ -52,6 +55,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.GetParentsBySchoolIdHandler(writer, parentSvc, logger),
 			logging,
+			requireAdminOrDirector,
 		),
 	)
 
@@ -59,7 +63,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.UpdateParentHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 
@@ -67,7 +71,7 @@ func RegisterParentRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *z
 		middleware.Chain(
 			handlers.DeleteParentHandler(writer, parentSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdmin,
 		),
 	)
 }

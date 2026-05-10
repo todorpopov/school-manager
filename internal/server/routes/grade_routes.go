@@ -15,20 +15,22 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 	logger.Info("Registering grade routes")
 
 	logging := middleware.Logging(logger)
-	//requireAdmin := middleware.RequireRoles(writer, authSvc, "ADMIN")
+	requireAdminOrTeacher := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER")
+	requireAdminTeacherOrParent := middleware.RequireRoles(writer, authSvc, "ADMIN", "TEACHER", "PARENT")
 
-        s.Handle("POST /api/grades/bulk",
-                middleware.Chain(
-                        handlers.BulkCreateGradesHandler(writer, gradeSvc, logger),
-                        logging,
-                ),
-        )
+	s.Handle("POST /api/grades/bulk",
+		middleware.Chain(
+			handlers.BulkCreateGradesHandler(writer, gradeSvc, logger),
+			logging,
+			requireAdminOrTeacher,
+		),
+	)
 
-        s.Handle("POST /api/grade",
+	s.Handle("POST /api/grade",
 		middleware.Chain(
 			handlers.CreateGradeHandler(writer, gradeSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrTeacher,
 		),
 	)
 
@@ -36,7 +38,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradeByIdHandler(writer, gradeSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -44,6 +46,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradesHandler(writer, gradeSvc, logger),
 			logging,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -51,6 +54,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.GetGradesByStudentIdHandler(writer, gradeSvc, logger),
 			logging,
+			requireAdminTeacherOrParent,
 		),
 	)
 
@@ -58,7 +62,7 @@ func RegisterGradeRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *za
 		middleware.Chain(
 			handlers.DeleteGradeHandler(writer, gradeSvc, logger),
 			logging,
-			//requireAdmin,
+			requireAdminOrTeacher,
 		),
 	)
 }
