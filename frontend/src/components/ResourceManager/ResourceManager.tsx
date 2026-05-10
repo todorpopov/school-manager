@@ -32,7 +32,10 @@ export function ResourceManager<T extends { [key: string]: unknown }>({
 
     const handleCreate = async (values: Partial<T>) => { await onCreate(values); backToList() }
     const handleUpdate = async (values: Partial<T>) => { if (!selected) return; await onUpdate(selected[idKey], values); backToList() }
-    const handleDelete = async () => { if (!deleteTarget) return; await onDelete(deleteTarget[idKey]); closeDelete() }
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        await onDelete(deleteTarget[idKey])
+    }
 
     const selectedLabel = selected
         ? (() => {

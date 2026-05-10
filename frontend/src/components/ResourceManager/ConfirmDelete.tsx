@@ -13,6 +13,10 @@ export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({ onConfirm, onCance
         setDeleting(true)
         try {
             await onConfirm()
+            onCancel()
+        } catch (error) {
+            onCancel()
+            throw error
         } finally {
             setDeleting(false)
         }
