@@ -22,7 +22,12 @@ export default function AppLayout() {
         <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
             <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-6">
-                    <span className="font-semibold text-slate-800 dark:text-slate-100">School Manager</span>
+                    <NavLink
+                        to="/home"
+                        className="font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    >
+                        School Manager
+                    </NavLink>
                     {isAdmin && (
                         <nav className="flex items-center gap-4">
                             <NavLink

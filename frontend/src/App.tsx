@@ -6,7 +6,7 @@ import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import AdminRegisterPage from './pages/AdminRegisterPage'
-import DashboardPage from './pages/DashboardPage'
+import HomePage from './pages/HomePage'
 import StatisticsPage from './pages/admin/StatisticsPage'
 import ManagementPage from './pages/admin/ManagementPage'
 import SchoolManagementPage from './pages/admin/management/SchoolManagementPage'
@@ -45,7 +45,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     >
-                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/home" element={<HomePage />} />
                         <Route path="/admin/statistics" element={
                             <ProtectedRoute allowedRoles={['ADMIN']}>
                                 <StatisticsPage />

@@ -74,7 +74,7 @@ export default function AdminRegisterPage() {
         try {
             const response = await apiRegisterAdmin(firstName, lastName, email, password, systemAuthToken)
             login(response)
-            navigate('/dashboard')
+            navigate('/home')
         } catch (err) {
             showToast(err instanceof Error ? err.message : 'Admin registration failed')
         } finally {

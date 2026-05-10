@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const newUser = buildUser(authResponse, authResponse.roles[0])
         saveUser(newUser)
-        navigate('/dashboard')
+        navigate('/home')
     }, [navigate])
 
     const selectRole = useCallback((role: Role) => {
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const newUser = buildUser(pendingAuth, role)
         saveUser(newUser)
         setPendingAuth(null)
-        navigate('/dashboard')
+        navigate('/home')
     }, [pendingAuth, navigate])
 
     const logout = useCallback(() => {
