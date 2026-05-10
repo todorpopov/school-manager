@@ -65,7 +65,7 @@ export default function AppLayout() {
                     {isStudent && (
                         <nav className="flex items-center gap-4">
                             <NavLink to="/student" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-100'}`}>
-                                My Grades
+                                My Grades and Absences
                             </NavLink>
                         </nav>
                     )}

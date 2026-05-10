@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import type { IconType } from 'react-icons'
-import { FaChalkboardTeacher, FaUserGraduate, FaUserFriends, FaBookOpen, FaChartBar } from 'react-icons/fa'
+import { FaChalkboardTeacher, FaUserGraduate, FaUserFriends, FaBookOpen, FaChartBar, FaSchool } from 'react-icons/fa'
 
 const RESOURCES: { label: string; description: string; path: string; Icon: IconType }[] = [
     { label: 'Statistics', description: 'View grade reports', path: '/principal/statistics', Icon: FaChartBar },
     { label: 'Subjects', description: 'View all subjects', path: '/principal/subjects', Icon: FaBookOpen },
+    { label: 'Classes', description: 'View school classes', path: '/principal/classes', Icon: FaSchool },
     { label: 'Teachers', description: 'View teaching staff', path: '/principal/teachers', Icon: FaChalkboardTeacher },
     { label: 'Students', description: 'View student records', path: '/principal/students', Icon: FaUserGraduate },
     { label: 'Parents', description: 'View parent contacts', path: '/principal/parents', Icon: FaUserFriends },

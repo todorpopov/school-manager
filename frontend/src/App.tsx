@@ -21,6 +21,7 @@ import CurriculumManagementPage from './pages/admin/management/CurriculumManagem
 import PrincipalPage from './pages/principal/PrincipalPage'
 import PrincipalStatisticsPage from './pages/principal/PrincipalStatisticsPage'
 import PrincipalSubjectsPage from './pages/principal/PrincipalSubjectsPage'
+import PrincipalClassesPage from './pages/principal/PrincipalClassesPage'
 import PrincipalTeachersPage from './pages/principal/PrincipalTeachersPage'
 import PrincipalStudentsPage from './pages/principal/PrincipalStudentsPage'
 import PrincipalParentsPage from './pages/principal/PrincipalParentsPage'
@@ -114,6 +115,11 @@ function App() {
                         <Route path="/principal/subjects" element={
                             <ProtectedRoute allowedRoles={['DIRECTOR']}>
                                 <PrincipalSubjectsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/principal/classes" element={
+                            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+                                <PrincipalClassesPage />
                             </ProtectedRoute>
                         } />
                         <Route path="/principal/teachers" element={

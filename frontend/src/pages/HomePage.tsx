@@ -128,7 +128,7 @@ const RoleContent = () => {
                     className="block p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
                 >
                     <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
-                        My Grades
+                        My Grades and Absences
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
                         View your grades and absences
