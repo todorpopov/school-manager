@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS sessions (
     session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+    active_role VARCHAR(50),
     expires_at TIMESTAMP NOT NULL
 );
 -- +goose StatementEnd

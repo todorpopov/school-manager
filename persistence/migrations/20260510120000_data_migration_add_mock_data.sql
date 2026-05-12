@@ -18,6 +18,12 @@ INSERT INTO users (first_name, last_name, email, password) VALUES ('Director', '
 -- Assign Director Roles
 INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email IN ('director1@app.com', 'director2@app.com', 'director3@app.com') AND r.role_name = 'DIRECTOR';
 
+-- Assign second role to Director 1
+INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email IN ('director1@app.com') AND r.role_name = 'PARENT';
+
+-- Assign third role to Director 1
+INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email IN ('director1@app.com') AND r.role_name = 'ADMIN';
+
 -- Create Director Entries
 INSERT INTO directors (user_id, school_id) SELECT u.user_id, 1 FROM users u WHERE u.email = 'director1@app.com';
 INSERT INTO directors (user_id, school_id) SELECT u.user_id, 2 FROM users u WHERE u.email = 'director2@app.com';
@@ -42,6 +48,9 @@ INSERT INTO users (first_name, last_name, email, password) VALUES ('Teacher', '1
 
 -- Assign Teacher Roles
 INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email LIKE 'teacher%@app.com' AND r.role_name = 'TEACHER';
+
+-- Assign second role to Teacher 5
+INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email IN ('teacher5@app.com') AND r.role_name = 'PARENT';
 
 -- Create Teacher Entries (5 teachers per school)
 INSERT INTO teachers (user_id, school_id) SELECT u.user_id, 1 FROM users u WHERE u.email = 'teacher1@app.com';
@@ -119,6 +128,10 @@ INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users
 
 -- Create Parent Entries
 INSERT INTO parents (user_id) SELECT user_id FROM users WHERE email LIKE 'parent%@app.com';
+-- Create Parent Entry for Director 1 (who also has PARENT role)
+INSERT INTO parents (user_id) SELECT user_id FROM users WHERE email = 'director1@app.com';
+-- Create Parent Entry for Teacher 5 (who also has PARENT role)
+INSERT INTO parents (user_id) SELECT user_id FROM users WHERE email = 'teacher5@app.com';
 
 -- Insert Students
 INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '1', 'student1@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
@@ -151,6 +164,10 @@ INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '2
 INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '28', 'student28@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
 INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '29', 'student29@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
 INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '30', 'student30@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
+INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '31', 'student31@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
+INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '32', 'student32@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
+INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '33', 'student33@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
+INSERT INTO users (first_name, last_name, email, password) VALUES ('Student', '34', 'student34@app.com', '$2a$06$m.UbLZoVTw7H.tDQcOtf3.eamAhlKaFfhjzMgddFlbWiDy6bx8vBy');
 
 -- Assign Student Roles
 INSERT INTO user_roles (user_id, role_id) SELECT u.user_id, r.role_id FROM users u, roles r WHERE u.email LIKE 'student%@app.com' AND r.role_name = 'STUDENT';
@@ -166,6 +183,12 @@ INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class
 INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student8@app.com' AND c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A';
 INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student9@app.com' AND c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'B';
 INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student10@app.com' AND c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'C';
+-- Students for Director 1 (who is also a parent)
+INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student31@app.com' AND c.school_id = 1 AND c.grade_level = 1 AND c.class_name = 'A';
+INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student32@app.com' AND c.school_id = 1 AND c.grade_level = 3 AND c.class_name = 'A';
+-- Students for Teacher 5 (who is also a parent)
+INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student33@app.com' AND c.school_id = 1 AND c.grade_level = 2 AND c.class_name = 'A';
+INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 1, c.class_id FROM users u, classes c WHERE u.email = 'student34@app.com' AND c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A';
 
 -- Create Student Entries and Assign to Classes (School 2 - SMG)
 INSERT INTO students (user_id, school_id, class_id) SELECT u.user_id, 2, c.class_id FROM users u, classes c WHERE u.email = 'student11@app.com' AND c.school_id = 2 AND c.grade_level = 5 AND c.class_name = 'A';
@@ -225,12 +248,35 @@ INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.studen
 INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'parent20@app.com' AND u2.email = 'student27@app.com';
 INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'parent20@app.com' AND u2.email = 'student28@app.com';
 INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'parent20@app.com' AND u2.email = 'student29@app.com';
+-- Link students to Director 1 (who is also a parent)
+INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'director1@app.com' AND u2.email = 'student31@app.com';
+INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'director1@app.com' AND u2.email = 'student32@app.com';
+-- Link students to Teacher 5 (who is also a parent)
+INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'teacher5@app.com' AND u2.email = 'student33@app.com';
+INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'teacher5@app.com' AND u2.email = 'student34@app.com';
 INSERT INTO student_parents (parent_id, student_id) SELECT p.parent_id, s.student_id FROM parents p, students s, users u1, users u2 WHERE p.user_id = u1.user_id AND s.user_id = u2.user_id AND u1.email = 'parent20@app.com' AND u2.email = 'student30@app.com';
 
 -- Create Curricula for Spring 2026 term (ongoing term) - School 1 (GPAE) Grade 1A
 INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 1 AND c.class_name = 'A' AND s.subject_name = 'Bulgarian' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
 INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 1 AND c.class_name = 'A' AND s.subject_name = 'Maths' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
 INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 1 AND c.class_name = 'A' AND s.subject_name = 'English' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+
+-- Create Curricula - School 1 (GPAE) Grade 3A
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 3 AND c.class_name = 'A' AND s.subject_name = 'Bulgarian' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 3 AND c.class_name = 'A' AND s.subject_name = 'Maths' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 3 AND c.class_name = 'A' AND s.subject_name = 'English' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 3 AND c.class_name = 'A' AND s.subject_name = 'History' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+
+-- Create Curricula - School 1 (GPAE) Grade 2A
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 2 AND c.class_name = 'A' AND s.subject_name = 'Bulgarian' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 2 AND c.class_name = 'A' AND s.subject_name = 'Maths' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 2 AND c.class_name = 'A' AND s.subject_name = 'English' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+
+-- Create Curricula - School 1 (GPAE) Grade 4A
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A' AND s.subject_name = 'Bulgarian' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A' AND s.subject_name = 'Maths' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A' AND s.subject_name = 'English' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
+INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 1 AND c.grade_level = 4 AND c.class_name = 'A' AND s.subject_name = 'Geography' AND t.school_id = 1 AND tm.name = 'Spring 2026' LIMIT 1;
 
 -- Create Curricula - School 2 (SMG) Grade 5A
 INSERT INTO curricula (class_id, subject_id, teacher_id, term_id) SELECT c.class_id, s.subject_id, t.teacher_id, tm.term_id FROM classes c, subjects s, teachers t, terms tm WHERE c.school_id = 2 AND c.grade_level = 5 AND c.class_name = 'A' AND s.subject_name = 'Bulgarian' AND t.school_id = 2 AND tm.name = 'Spring 2026' LIMIT 1;
@@ -264,6 +310,28 @@ INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s
 INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.75, '2026-04-08' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student28@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Physics';
 INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.00, '2026-04-18' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student28@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Chemistry';
 
+-- Add grades for Student 31 (Director 1's child - Grade 1A)
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.25, '2026-03-12' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student31@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.75, '2026-04-08' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student31@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.50, '2026-04-15' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student31@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+
+-- Add grades for Student 32 (Director 1's child - Grade 3A)
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 4.75, '2026-03-10' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.00, '2026-04-05' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.25, '2026-04-14' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 4.50, '2026-04-22' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'History';
+
+-- Add grades for Student 33 (Teacher 5's child - Grade 2A)
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.50, '2026-03-14' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student33@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.00, '2026-04-06' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student33@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.75, '2026-04-16' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student33@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+
+-- Add grades for Student 34 (Teacher 5's child - Grade 4A)
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 4.25, '2026-03-11' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 4.50, '2026-04-03' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 5.00, '2026-04-13' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+INSERT INTO grades (student_id, curriculum_id, grade_value, grade_date) SELECT s.student_id, cur.curriculum_id, 4.75, '2026-04-24' FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Geography';
+
 -- Add absences for Student 1
 INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-05', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student1@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
 INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-02', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student1@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
@@ -277,6 +345,24 @@ INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELEC
 
 -- Add absences for Student 28
 INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-22', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student28@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Chemistry';
+
+-- Add absences for Student 31 (Director 1's child - Grade 1A)
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-08', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student31@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-18', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student31@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+
+-- Add absences for Student 32 (Director 1's child - Grade 3A)
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-16', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-10', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'History';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-25', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student32@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+
+-- Add absences for Student 33 (Teacher 5's child - Grade 2A)
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-09', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student33@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Maths';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-19', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student33@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
+
+-- Add absences for Student 34 (Teacher 5's child - Grade 4A)
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-03-17', true FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'English';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-11', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Geography';
+INSERT INTO absences (student_id, curriculum_id, absence_date, is_excused) SELECT s.student_id, cur.curriculum_id, '2026-04-26', false FROM students s, curricula cur, classes c, subjects sub, users u WHERE s.user_id = u.user_id AND u.email = 'student34@app.com' AND cur.class_id = s.class_id AND cur.class_id = c.class_id AND cur.subject_id = sub.subject_id AND sub.subject_name = 'Bulgarian';
 
 -- +goose StatementEnd
 

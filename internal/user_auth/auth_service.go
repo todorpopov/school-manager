@@ -14,6 +14,7 @@ type IAuthService interface {
 	RegisterUser(ctx context.Context, registerRequest *RegisterRequest) (*AuthResponse, *exceptions.AppError)
 	RegisterAdminUser(ctx context.Context, registerAdminReq *RegisterAdminRequest) (*AuthResponse, *exceptions.AppError)
 	LogUserIn(ctx context.Context, loginRequest *LoginRequest) (*AuthResponse, *exceptions.AppError)
+	SetSessionRole(ctx context.Context, sessionId string, selectRoleReq *SelectRoleRequest) (*AuthResponse, *exceptions.AppError)
 	IsRequestAuthorized(ctx context.Context, request *AuthRequest) (bool, *exceptions.AppError)
 }
 
@@ -139,6 +140,49 @@ func (as *AuthService) LogUserIn(ctx context.Context, loginRequest *LoginRequest
 	return resp, nil
 }
 
+func (as *AuthService) SetSessionRole(ctx context.Context, sessionId string, selectRoleReq *SelectRoleRequest) (*AuthResponse, *exceptions.AppError) {
+	if err := ValidateSelectRoleRequest(selectRoleReq); err != nil {
+		return nil, err
+	}
+
+	session, err := as.sessionSvc.GetActiveSessionById(ctx, nil, sessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := as.userSvc.GetUserById(ctx, nil, session.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	hasRole := false
+	for _, role := range user.Roles {
+		if role == selectRoleReq.Role {
+			hasRole = true
+			break
+		}
+	}
+
+	if !hasRole {
+		return nil, exceptions.NewAppError("UNAUTHORIZED", "User does not have the requested role", nil)
+	}
+
+	_, err = as.sessionSvc.SetSessionRole(ctx, nil, sessionId, selectRoleReq.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &AuthResponse{
+		UserId:    user.UserId,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		SessionId: sessionId,
+		Roles:     user.Roles,
+	}
+	return resp, nil
+}
+
 func (as *AuthService) IsRequestAuthorized(ctx context.Context, request *AuthRequest) (bool, *exceptions.AppError) {
 	if err := ValidateAuthRequest(request); err != nil {
 		return false, err
@@ -147,6 +191,15 @@ func (as *AuthService) IsRequestAuthorized(ctx context.Context, request *AuthReq
 	session, err := as.sessionSvc.GetActiveSessionById(ctx, nil, request.SessionId)
 	if err != nil {
 		return false, err
+	}
+
+	if session.ActiveRole != nil && *session.ActiveRole != "" {
+		for _, role := range request.RequiredRoles {
+			if role == *session.ActiveRole {
+				return true, nil
+			}
+		}
+		return false, exceptions.NewAppError("UNAUTHORIZED", "Unauthorized", nil)
 	}
 
 	rolesMap, err := as.userSvc.GetUsersRoles(ctx, nil, []int32{session.UserId})

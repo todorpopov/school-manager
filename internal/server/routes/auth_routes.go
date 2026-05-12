@@ -35,4 +35,11 @@ func RegisterAuthRoutes(s *http.ServeMux, writer *writer.HttpWriter, logger *zap
 			logging,
 		),
 	)
+
+	s.Handle("POST /api/auth/select-role",
+		middleware.Chain(
+			handlers.SetSessionRoleHandler(writer, authSvc, logger),
+			logging,
+		),
+	)
 }

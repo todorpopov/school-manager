@@ -132,3 +132,29 @@ export async function apiRegisterAdmin(
     } as AuthResponse
 }
 
+export async function apiSelectRole(sessionId: string, role: string): Promise<AuthResponse> {
+    const res = await fetch(`${BASE}/auth/select-role`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Session-Id': sessionId,
+        },
+        body: JSON.stringify({ role }),
+    })
+
+    const json = await res.json()
+
+    if (json.error) {
+        throw new Error(json.message)
+    }
+
+    const raw = json.data
+    return {
+        sessionId: raw.sessionId,
+        userId: raw.user_id,
+        roles: raw.roles,
+        firstName: raw.first_name,
+        lastName: raw.last_name,
+        email: raw.email,
+    } as AuthResponse
+}

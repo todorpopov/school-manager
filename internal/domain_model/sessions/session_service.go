@@ -11,6 +11,7 @@ import (
 type ISessionService interface {
 	CreateOrRenewSession(ctx context.Context, tx pgx.Tx, userId int32) (*Session, *exceptions.AppError)
 	GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError)
+	SetSessionRole(ctx context.Context, tx pgx.Tx, sessionId string, role string) (*Session, *exceptions.AppError)
 }
 
 type SessionService struct {
@@ -31,4 +32,12 @@ func (ss *SessionService) CreateOrRenewSession(ctx context.Context, tx pgx.Tx, u
 
 func (ss *SessionService) GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError) {
 	return ss.sessionRepo.GetActiveSessionById(ctx, tx, sessionId)
+}
+
+func (ss *SessionService) SetSessionRole(ctx context.Context, tx pgx.Tx, sessionId string, role string) (*Session, *exceptions.AppError) {
+	if msg := domain_model.ValidateRoleName(role); msg != "" {
+		return nil, exceptions.NewValidationError("Invalid role", map[string]string{"role": msg})
+	}
+
+	return ss.sessionRepo.SetSessionRole(ctx, tx, sessionId, role)
 }

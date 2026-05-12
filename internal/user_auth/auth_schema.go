@@ -25,6 +25,11 @@ type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type SelectRoleRequest struct {
+	Role string `json:"role"`
+}
+
 type AuthResponse struct {
 	UserId    int32    `json:"user_id"`
 	FirstName string   `json:"first_name"`
@@ -114,6 +119,19 @@ func ValidateAuthRequest(authRequest *AuthRequest) *exceptions.AppError {
 	messages := domain_model.ValidateRoleNames(authRequest.RequiredRoles, true)
 	if len(messages) > 0 {
 		return exceptions.NewValidationError("Invalid roles", messages)
+	}
+	return nil
+}
+
+func ValidateSelectRoleRequest(selectRoleRequest *SelectRoleRequest) *exceptions.AppError {
+	messages := map[string]string{}
+
+	if msg := domain_model.ValidateRoleName(selectRoleRequest.Role); msg != "" {
+		messages["role"] = msg
+	}
+
+	if len(messages) > 0 {
+		return exceptions.NewValidationError("Validation failed for role selection", messages)
 	}
 	return nil
 }

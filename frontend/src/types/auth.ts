@@ -1,8 +1,5 @@
 export type Role = 'ADMIN' | 'DIRECTOR' | 'TEACHER' | 'PARENT' | 'STUDENT' | 'USER'
 
-export const AMBIGUOUS_ROLE_PAIRS: Role[][] = [
-    ['TEACHER', 'PARENT'],
-]
 
 export interface AuthResponse {
     sessionId: string

@@ -19,7 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default function LoginPage() {
-    const { login, pendingAuth, selectRole } = useAuth()
+    const { login, pendingAuth, selectRole, loading: authLoading } = useAuth()
 
     const { toast, show: showToast, dismiss } = useToast()
 
@@ -27,6 +27,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('')
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
     const [loading, setLoading] = useState(false)
+    const [selectingRole, setSelectingRole] = useState(false)
 
     const validate = () => {
         const e: typeof errors = {}
@@ -74,11 +75,19 @@ export default function LoginPage() {
         }
     }
 
-    const handleRoleSelect = (role: string) => {
-        selectRole(role as Parameters<typeof selectRole>[0])
+    const handleRoleSelect = async (role: string) => {
+        setSelectingRole(true)
+        try {
+            await selectRole(role as Parameters<typeof selectRole>[0])
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to select role')
+            setSelectingRole(false)
+        }
     }
 
     if (pendingAuth) {
+        const displayRoles = pendingAuth.roles.filter(r => r !== 'USER')
+
         return (
             <AuthLayout>
                 <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-4 text-center">
@@ -88,16 +97,22 @@ export default function LoginPage() {
                     Your account has multiple roles. Choose how you want to continue.
                 </p>
                 <div className="flex flex-col gap-3">
-                    {pendingAuth.roles.map((role) => (
+                    {displayRoles.map((role) => (
                         <button
                             key={role}
                             onClick={() => handleRoleSelect(role)}
-                            className="w-full py-3 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 font-medium transition-colors text-left"
+                            disabled={selectingRole || authLoading}
+                            className="w-full py-3 px-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 font-medium transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {ROLE_LABELS[role] ?? role}
                         </button>
                     ))}
                 </div>
+                {(selectingRole || authLoading) && (
+                    <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-4">
+                        Setting up your session...
+                    </p>
+                )}
                 {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={dismiss} />}
             </AuthLayout>
         )

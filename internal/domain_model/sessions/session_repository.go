@@ -13,6 +13,7 @@ import (
 type ISessionRepository interface {
 	CreateOrRenewSession(ctx context.Context, tx pgx.Tx, userId int32) (*Session, *exceptions.AppError)
 	GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError)
+	SetSessionRole(ctx context.Context, tx pgx.Tx, sessionId string, role string) (*Session, *exceptions.AppError)
 }
 
 type SessionRepository struct {
@@ -27,8 +28,8 @@ func NewSessionRepository(db *persistence.Database, sessionExpiration time.Durat
 
 func (sr *SessionRepository) CreateOrRenewSession(ctx context.Context, tx pgx.Tx, userId int32) (*Session, *exceptions.AppError) {
 	sql := "INSERT INTO sessions (user_id, expires_at) " +
-		"VALUES ($1, now() + $2) ON CONFLICT (user_id) DO UPDATE SET expires_at = now() + $2 " +
-		"RETURNING session_id, user_id, expires_at;"
+		"VALUES ($1, now() + $2) ON CONFLICT (user_id) DO UPDATE SET expires_at = now() + $2, active_role = NULL " +
+		"RETURNING session_id, user_id, active_role, expires_at;"
 
 	var session Session
 	var err error
@@ -37,6 +38,7 @@ func (sr *SessionRepository) CreateOrRenewSession(ctx context.Context, tx pgx.Tx
 		err = tx.QueryRow(ctx, sql, userId, sr.sessionExpiration).Scan(
 			&session.SessionId,
 			&session.UserId,
+			&session.ActiveRole,
 			&session.ExpiresAt,
 		)
 	} else {
@@ -44,6 +46,7 @@ func (sr *SessionRepository) CreateOrRenewSession(ctx context.Context, tx pgx.Tx
 		err = sr.db.Pool.QueryRow(ctx, sql, userId, sr.sessionExpiration).Scan(
 			&session.SessionId,
 			&session.UserId,
+			&session.ActiveRole,
 			&session.ExpiresAt,
 		)
 	}
@@ -56,7 +59,7 @@ func (sr *SessionRepository) CreateOrRenewSession(ctx context.Context, tx pgx.Tx
 }
 
 func (sr *SessionRepository) GetActiveSessionById(ctx context.Context, tx pgx.Tx, sessionId string) (*Session, *exceptions.AppError) {
-	sql := "SELECT session_id, user_id, expires_at FROM sessions WHERE session_id = $1;"
+	sql := "SELECT session_id, user_id, active_role, expires_at FROM sessions WHERE session_id = $1;"
 	var session Session
 	var err error
 	if tx != nil {
@@ -64,6 +67,7 @@ func (sr *SessionRepository) GetActiveSessionById(ctx context.Context, tx pgx.Tx
 		err = tx.QueryRow(ctx, sql, sessionId).Scan(
 			&session.SessionId,
 			&session.UserId,
+			&session.ActiveRole,
 			&session.ExpiresAt,
 		)
 	} else {
@@ -71,6 +75,7 @@ func (sr *SessionRepository) GetActiveSessionById(ctx context.Context, tx pgx.Tx
 		err = sr.db.Pool.QueryRow(ctx, sql, sessionId).Scan(
 			&session.SessionId,
 			&session.UserId,
+			&session.ActiveRole,
 			&session.ExpiresAt,
 		)
 	}
@@ -86,3 +91,41 @@ func (sr *SessionRepository) GetActiveSessionById(ctx context.Context, tx pgx.Tx
 
 	return &session, nil
 }
+
+func (sr *SessionRepository) SetSessionRole(ctx context.Context, tx pgx.Tx, sessionId string, role string) (*Session, *exceptions.AppError) {
+	sql := "UPDATE sessions SET active_role = $1 WHERE session_id = $2 " +
+		"RETURNING session_id, user_id, active_role, expires_at;"
+
+	var session Session
+	var err error
+	if tx != nil {
+		sr.logger.Debug("Setting session role in transaction", zap.String("session_id", sessionId), zap.String("role", role))
+		err = tx.QueryRow(ctx, sql, role, sessionId).Scan(
+			&session.SessionId,
+			&session.UserId,
+			&session.ActiveRole,
+			&session.ExpiresAt,
+		)
+	} else {
+		sr.logger.Debug("Setting session role without transaction", zap.String("session_id", sessionId), zap.String("role", role))
+		err = sr.db.Pool.QueryRow(ctx, sql, role, sessionId).Scan(
+			&session.SessionId,
+			&session.UserId,
+			&session.ActiveRole,
+			&session.ExpiresAt,
+		)
+	}
+
+	if err != nil {
+		sr.logger.Error("Failed to set session role", zap.Error(err))
+		return nil, exceptions.PgErrorToAppError(err)
+	}
+
+	if session.ExpiresAt.Before(time.Now()) {
+		sr.logger.Debug("Session has expired", zap.String("session_id", sessionId))
+		return nil, exceptions.NewAppError("SESSION_EXPIRED", "Session has expired", nil)
+	}
+
+	return &session, nil
+}
+

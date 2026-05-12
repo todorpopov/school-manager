@@ -1,14 +1,16 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Role, AuthResponse } from '../types/auth'
-import { AMBIGUOUS_ROLE_PAIRS } from '../types/auth'
 import type { AuthUser } from './authContext.types'
 import { AuthContext } from './authContext.types'
+import { apiSelectRole } from '../api/auth'
 
 const USER_KEY = 'sm_user'
 
 function needsRolePicker(roles: Role[]): boolean {
-    return AMBIGUOUS_ROLE_PAIRS.some((pair) => pair.every((r) => roles.includes(r)))
+    // Filter out the generic USER role as it's not a specific role
+    const specificRoles = roles.filter(r => r !== 'USER')
+    return specificRoles.length > 1
 }
 
 function buildUser(authResponse: AuthResponse, activeRole: Role): AuthUser {
@@ -30,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return stored ? (JSON.parse(stored) as AuthUser) : null
     })
     const [pendingAuth, setPendingAuth] = useState<AuthResponse | null>(null)
-    const [loading] = useState(false)
+    const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
 
     const saveUser = (newUser: AuthUser) => {
@@ -46,17 +48,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setPendingAuth(authResponse)
             return
         }
-        const newUser = buildUser(authResponse, authResponse.roles[0])
+        const specificRoles = authResponse.roles.filter(r => r !== 'USER')
+        const newUser = buildUser(authResponse, specificRoles[0])
         saveUser(newUser)
         navigate('/home')
     }, [navigate])
 
-    const selectRole = useCallback((role: Role) => {
+    const selectRole = useCallback(async (role: Role) => {
         if (!pendingAuth) return
-        const newUser = buildUser(pendingAuth, role)
-        saveUser(newUser)
-        setPendingAuth(null)
-        navigate('/home')
+
+        setLoading(true)
+        try {
+            await apiSelectRole(pendingAuth.sessionId, role)
+
+            const newUser = buildUser(pendingAuth, role)
+            saveUser(newUser)
+            setPendingAuth(null)
+            navigate('/home')
+        } catch (error) {
+            console.error('Failed to set session role:', error)
+            const newUser = buildUser(pendingAuth, role)
+            saveUser(newUser)
+            setPendingAuth(null)
+            navigate('/home')
+        } finally {
+            setLoading(false)
+        }
     }, [pendingAuth, navigate])
 
     const logout = useCallback(() => {
