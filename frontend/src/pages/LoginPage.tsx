@@ -150,12 +150,12 @@ export default function LoginPage() {
                 </button>
             </form>
 
-            <p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">
-                Don&apos;t have an account?{' '}
-                <Link to="/signup" className="text-indigo-500 hover:underline font-medium">
-                    Sign up
-                </Link>
-            </p>
+            {/*<p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">*/}
+            {/*    Don&apos;t have an account?{' '}*/}
+            {/*    <Link to="/signup" className="text-indigo-500 hover:underline font-medium">*/}
+            {/*        Sign up*/}
+            {/*    </Link>*/}
+            {/*</p>*/}
             <p className="mt-2 text-center text-sm text-slate-500 dark:text-slate-400">
                 System administrator?{' '}
                 <Link to="/admin/register" className="text-indigo-500 hover:underline font-medium">

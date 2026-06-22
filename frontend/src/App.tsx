@@ -28,6 +28,7 @@ import PrincipalParentsPage from './pages/principal/PrincipalParentsPage'
 import ParentPage from './pages/parent/ParentPage'
 import StudentPage from './pages/student/StudentPage'
 import TeacherPage from './pages/teacher/TeacherPage.tsx';
+import AccessDeniedPage from './pages/AccessDeniedPage'
 
 const queryClient = new QueryClient()
 
@@ -39,6 +40,7 @@ function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/admin/register" element={<AdminRegisterPage />} />
+                    <Route path="/access-denied" element={<AccessDeniedPage />} />
                     <Route
                         element={
                             <ProtectedRoute>

@@ -47,12 +47,12 @@ function aggregate(teachers: TeacherSubjectsGrades[]): { total: number; sixes: n
     return (teachers ?? []).reduce((acc, t) => {
         (t.subjects ?? []).forEach(s => {
             const gd = s.absence_summary.grade_distribution
-            acc.total  += s.absence_summary.number_of_grades
-            acc.sixes  += gd.number_of_sixes
-            acc.fives  += gd.number_of_fives
-            acc.fours  += gd.number_of_fours
+            acc.total += s.absence_summary.number_of_grades
+            acc.sixes += gd.number_of_sixes
+            acc.fives += gd.number_of_fives
+            acc.fours += gd.number_of_fours
             acc.threes += gd.number_of_threes
-            acc.twos   += gd.number_of_twos
+            acc.twos += gd.number_of_twos
         })
         return acc
     }, { total: 0, sixes: 0, fives: 0, fours: 0, threes: 0, twos: 0 })
@@ -95,12 +95,12 @@ const ResultTable: React.FC<{ data: SchoolGrades[]; breakdown: ReportBreakdown }
                     {breakdown === 'per_teacher' && school.teachers.map(t => {
                         const totals = (t.subjects ?? []).reduce((acc, s) => {
                             const gd = s.absence_summary.grade_distribution
-                            acc.total  += s.absence_summary.number_of_grades
-                            acc.sixes  += gd.number_of_sixes
-                            acc.fives  += gd.number_of_fives
-                            acc.fours  += gd.number_of_fours
+                            acc.total += s.absence_summary.number_of_grades
+                            acc.sixes += gd.number_of_sixes
+                            acc.fives += gd.number_of_fives
+                            acc.fours += gd.number_of_fours
                             acc.threes += gd.number_of_threes
-                            acc.twos   += gd.number_of_twos
+                            acc.twos += gd.number_of_twos
                             return acc
                         }, { total: 0, sixes: 0, fives: 0, fours: 0, threes: 0, twos: 0 })
                         return <GradeRow key={t.teacher.teacher_id} label={`${t.teacher.first_name} ${t.teacher.last_name}`} {...totals} />
@@ -112,21 +112,21 @@ const ResultTable: React.FC<{ data: SchoolGrades[]; breakdown: ReportBreakdown }
                                 const gd = s.absence_summary.grade_distribution
                                 const existing = subjectMap.get(s.subject.subject_id)
                                 if (existing) {
-                                    existing.total  += s.absence_summary.number_of_grades
-                                    existing.sixes  += gd.number_of_sixes
-                                    existing.fives  += gd.number_of_fives
-                                    existing.fours  += gd.number_of_fours
+                                    existing.total += s.absence_summary.number_of_grades
+                                    existing.sixes += gd.number_of_sixes
+                                    existing.fives += gd.number_of_fives
+                                    existing.fours += gd.number_of_fours
                                     existing.threes += gd.number_of_threes
-                                    existing.twos   += gd.number_of_twos
+                                    existing.twos += gd.number_of_twos
                                 } else {
                                     subjectMap.set(s.subject.subject_id, {
                                         subject: s.subject,
-                                        total:  s.absence_summary.number_of_grades,
-                                        sixes:  gd.number_of_sixes,
-                                        fives:  gd.number_of_fives,
-                                        fours:  gd.number_of_fours,
+                                        total: s.absence_summary.number_of_grades,
+                                        sixes: gd.number_of_sixes,
+                                        fives: gd.number_of_fives,
+                                        fours: gd.number_of_fours,
                                         threes: gd.number_of_threes,
-                                        twos:   gd.number_of_twos,
+                                        twos: gd.number_of_twos,
                                     })
                                 }
                             })
