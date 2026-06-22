@@ -1,0 +1,58 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Toast > defaults to error variant 1`] = `
+<div>
+  <div
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-sm text-sm w-max max-w-sm bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/80 dark:border-red-700 dark:text-red-200"
+  >
+    <span
+      class="flex-1"
+    >
+      Oops
+    </span>
+    <button
+      class="shrink-0 opacity-70 hover:opacity-100 bg-transparent border-none text-inherit cursor-pointer text-base leading-none"
+    >
+      ✕
+    </button>
+  </div>
+</div>
+`;
+
+exports[`Toast > renders error variant 1`] = `
+<div>
+  <div
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-sm text-sm w-max max-w-sm bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/80 dark:border-red-700 dark:text-red-200"
+  >
+    <span
+      class="flex-1"
+    >
+      Something went wrong
+    </span>
+    <button
+      class="shrink-0 opacity-70 hover:opacity-100 bg-transparent border-none text-inherit cursor-pointer text-base leading-none"
+    >
+      ✕
+    </button>
+  </div>
+</div>
+`;
+
+exports[`Toast > renders success variant 1`] = `
+<div>
+  <div
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-sm text-sm w-max max-w-sm bg-emerald-100 border border-emerald-300 text-emerald-800 dark:bg-emerald-900/80 dark:border-emerald-700 dark:text-emerald-200"
+  >
+    <span
+      class="flex-1"
+    >
+      Saved successfully
+    </span>
+    <button
+      class="shrink-0 opacity-70 hover:opacity-100 bg-transparent border-none text-inherit cursor-pointer text-base leading-none"
+    >
+      ✕
+    </button>
+  </div>
+</div>
+`;

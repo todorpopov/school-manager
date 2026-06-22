@@ -1,0 +1,62 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Field > renders error message 1`] = `
+<div>
+  <div
+    class="flex flex-col gap-1"
+  >
+    <label
+      class="text-sm font-medium text-slate-700 dark:text-slate-200"
+    >
+      Email
+    </label>
+    <input
+      type="email"
+    />
+    <span
+      class="text-xs text-red-500"
+    >
+      Invalid email address
+    </span>
+  </div>
+</div>
+`;
+
+exports[`Field > renders label and children 1`] = `
+<div>
+  <div
+    class="flex flex-col gap-1"
+  >
+    <label
+      class="text-sm font-medium text-slate-700 dark:text-slate-200"
+    >
+      Email
+    </label>
+    <input
+      type="email"
+    />
+  </div>
+</div>
+`;
+
+exports[`Field > renders required indicator 1`] = `
+<div>
+  <div
+    class="flex flex-col gap-1"
+  >
+    <label
+      class="text-sm font-medium text-slate-700 dark:text-slate-200"
+    >
+      Password
+      <span
+        class="text-red-500 ml-0.5"
+      >
+        *
+      </span>
+    </label>
+    <input
+      type="password"
+    />
+  </div>
+</div>
+`;
